@@ -1,0 +1,126 @@
+<style>
+  :root {
+    --brand-blue: #1A5F7A; /* Azul oscuro corporativo */
+    --brand-green: #86C232; /* Verde del logo */
+    --brand-red: #E84A5F;
+    --brand-purple: #6c5ce7;
+    
+    /* Colores del requerimiento (Semáforo) */
+    --status-gris: #95a5a6;
+    --status-rojo: #e74c3c;
+    --status-ambar: #f39c12;
+    --status-verde: #2ecc71;
+    --status-azul: #3498db;
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .bg-custom-brand {
+    background-color: #1e3a8a !important; /* Azul Marino Corporativo (Confianza y Seguridad) */
+  }
+
+  .brand-logo {
+    height: 45px;
+    width: auto;
+    border-radius: 50%;
+    background-color: white; /* Para que resalte el fondo transparente */
+    padding: 2px;
+  }
+
+  /* Status Badges */
+  .status-legend .badge { font-size: 0.9rem; padding: 0.5em 1em; font-weight: 500; }
+  .status-gris { background-color: var(--status-gris); color: white;}
+  .status-rojo { background-color: var(--status-rojo); color: white;}
+  .status-ambar { background-color: var(--status-ambar); color: white;}
+  .status-verde { background-color: var(--status-verde); color: white;}
+  .status-azul { background-color: var(--status-azul); color: white;}
+
+  /* Calendario CSS Grid */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    background-color: #ecf0f1;
+    gap: 1px; /* Líneas del grid */
+  }
+
+  .calendar-header-day {
+    background-color: #fff;
+    text-align: center;
+    padding: 10px 0;
+    font-weight: 600;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+  }
+
+  .calendar-day {
+    background-color: #fff;
+    min-height: 120px;
+    padding: 10px;
+    position: relative;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+  }
+  
+  .calendar-day:hover {
+    background-color: #f8f9fa;
+  }
+
+  .calendar-day.empty {
+    background-color: #fdfdfd;
+    cursor: default;
+  }
+
+  .day-number {
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: #2c3e50;
+  }
+
+  /* Tratamiento visual para celdas en el pasado */
+  .calendar-day.day-past {
+    background-color: #fcfcfc;
+    color: #bdc3c7;
+  }
+  
+  .calendar-day.day-past .day-number {
+    color: #95a5a6;
+  }
+
+  /* Indicadores dentro del día */
+  .guardia-indicador {
+    margin-top: 10px;
+    border-radius: 6px;
+    padding: 8px;
+    color: white;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+
+  .guardia-gris { background-color: var(--status-gris); }
+  .guardia-rojo { background-color: var(--status-rojo); }
+  .guardia-ambar { background-color: var(--status-ambar); }
+  .guardia-verde { background-color: var(--status-verde); }
+  .guardia-azul { background-color: var(--status-azul); }
+
+  .bus-icon {
+    font-size: 1.1rem;
+    margin-right: 5px;
+  }
+  .bus-ok { color: #fff; }
+  .bus-no { color: rgba(255,255,255,0.4); text-decoration: line-through;}
+  
+  .voluntarios-count {
+      font-weight: bold;
+      font-size: 1.1rem;
+  }
+
+  /* Estilo para espaciado profesional del campo OTP */
+  .letter-spacing-2 {
+      letter-spacing: 0.35rem;
+      font-weight: bold;
+      font-size: 1.3rem;
+  }
+</style>
