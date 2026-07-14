@@ -1,0 +1,1094 @@
+<script>
+  let currentDate = new Date(2026, 6, 1); // Inicializado por defecto en Julio 2026
+  let guardiasData = []; // Almacén en memoria de la data operativa
+  let catalogoChoferes = null; // Cache para optimizar la carga del panel de despacho
+  let catalogoPuntos = null; 
+
+  document.addEventListener("DOMContentLoaded", function() {
+    if (document.getElementById('calendarGrid')) {
+        initCalendar();
+        cargarDatos();
+    }
+  });
+
+  function cargarDatos() {
+    const grid = document.getElementById('calendarGrid');
+    if (!grid) return;
+    
+    grid.innerHTML = '<div class="p-5 text-center col-span-7" style="grid-column: span 7;"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Sincronizando con Base de Datos...</p></div>';
+    
+    google.script.run
+      .withSuccessHandler(procesarDatos)
+      .withFailureHandler(error => {
+        alert("Error crítico de conexión con el servidor: " + error);
+      })
+      .getDatosCalendario();
+  }
+
+  function procesarDatos(responseStr) {
+    try {
+      const response = JSON.parse(responseStr);
+      if(response.status === 'success') {
+        guardiasData = response.data;
+        renderCalendar(currentDate);
+        actualizarBadgeRolNavbar();
+      } else {
+        console.error("Error del servidor:", response.message);
+        alert("Error al procesar la data operativa: " + response.message);
+      }
+    } catch(e) {
+      console.error("Error parseando respuesta JSON:", e);
+    }
+  }
+
+  function determinarColorGuardia(fechaStr, inscritos, requeridos) {
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+    
+    const partes = fechaStr.split('-');
+    const fechaG = new Date(partes[0], partes[1] - 1, partes[2]);
+    fechaG.setHours(0,0,0,0);
+
+    if (fechaG < hoy) return 'guardia-gris';
+    if (!requeridos || requeridos <= 0) return 'guardia-rojo';
+
+    const porcentaje = (inscritos / requeridos) * 100;
+
+    if (inscritos >= requeridos) return 'guardia-azul';  
+    if (porcentaje >= 60) return 'guardia-verde';        
+    if (porcentaje < 10) return 'guardia-rojo';          
+    return 'guardia-ambar';                              
+  }
+
+  function renderCalendar(date) {
+    refrescarSesionLocal();
+    const grid = document.getElementById('calendarGrid');
+    const monthYear = document.getElementById('monthYearDisplay');
+    if (!grid || !monthYear) return;
+    
+    grid.innerHTML = ''; 
+
+    const year = date.getFullYear();
+    const month = date.getMonth();
+
+    const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    monthYear.innerText = `${monthNames[month]} ${year}`;
+
+    const days = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    days.forEach(day => {
+      const dayHeader = document.createElement('div');
+      dayHeader.className = 'calendar-header-day';
+      dayHeader.innerText = day;
+      grid.appendChild(dayHeader);
+    });
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let emptyDays = firstDay === 0 ? 6 : firstDay - 1; 
+
+    for (let i = 0; i < emptyDays; i++) {
+      const emptyDiv = document.createElement('div');
+      emptyDiv.className = 'calendar-day empty';
+      grid.appendChild(emptyDiv);
+    }
+
+    const emailLogueado = sesionUsuario ? sesionUsuario.email.toLowerCase().trim() : "";
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      
+      const dayDiv = document.createElement('div');
+      dayDiv.className = 'calendar-day position-relative';
+      dayDiv.setAttribute('data-fecha', dateStr);
+      
+      const dayNum = document.createElement('div');
+      dayNum.className = 'day-number';
+      dayNum.innerText = day;
+      dayDiv.appendChild(dayNum);
+
+      const guardiaDelDia = guardiasData.find(g => g.fechaStr.startsWith(dateStr));
+
+      if (guardiaDelDia) {
+          const colorClass = determinarColorGuardia(guardiaDelDia.fechaStr, guardiaDelDia.voluntariosInscritos, guardiaDelDia.requerimientoTotal);
+          
+          const estaInscrito = guardiaDelDia.correosInscritos && guardiaDelDia.correosInscritos.some(cadenaTripulante => {
+              return cadenaTripulante.toLowerCase().includes(emailLogueado);
+          });
+
+          if (estaInscrito && emailLogueado !== "") {
+              const checkBadge = document.createElement('span');
+              checkBadge.className = 'position-absolute top-0 end-0 badge rounded-pill bg-success m-1 animate__animated animate__bounceIn';
+              checkBadge.innerHTML = '<i class="fa-solid fa-user-check"></i>';
+              dayDiv.appendChild(checkBadge);
+              dayDiv.classList.add('border-success-custom'); 
+          }
+
+          const indicador = document.createElement('div');
+          indicador.className = `guardia-indicador ${colorClass}`;
+          
+          const busIcon = document.createElement('i');
+          busIcon.className = `fa-solid fa-bus bus-icon ${guardiaDelDia.tieneTransporte ? 'bus-ok' : 'bus-no'}`;
+          
+          const txtInfo = document.createElement('span');
+          txtInfo.innerHTML = `<span class="voluntarios-count">${guardiaDelDia.voluntariosInscritos}</span> / ${guardiaDelDia.requerimientoTotal}`;
+          
+          indicador.appendChild(busIcon);
+          indicador.appendChild(txtInfo);
+          dayDiv.appendChild(indicador);
+      } else {
+          const txtNull = document.createElement('div');
+          txtNull.className = "text-muted small mt-2";
+          txtNull.innerText = "Sin registro";
+          dayDiv.appendChild(txtNull);
+      }
+
+      grid.appendChild(dayDiv);
+    }
+
+    grid.onclick = function(event) {
+      const targetDay = event.target.closest('.calendar-day');
+      if (!targetDay || targetDay.classList.contains('empty')) return;
+      
+      const fechaClick = targetDay.getAttribute('data-fecha');
+      const guardiaSeleccionada = guardiasData.find(g => g.fechaStr.startsWith(fechaClick));
+      
+      refrescarSesionLocal();
+      const rol = sesionUsuario ? (sesionUsuario.rolActivo || sesionUsuario.rolActive || "eslabon") : "eslabon";
+
+      if (guardiaSeleccionada) {
+        const indicadorElem = targetDay.querySelector('.guardia-indicador');
+        const colorClass = indicadorElem ? indicadorElem.classList[1] : '';
+        abrirModalGuardia(guardiaSeleccionada, colorClass);
+      } else {
+        if (rol === "coordinador") {
+          abrirModalGuardia({ fechaStr: fechaClick, id: null }, '');
+        } else {
+          alert(`No hay un requerimiento programado para el día ${fechaClick}.`);
+        }
+      }
+    };
+  }
+
+  function initCalendar() {
+    const btnPrev = document.getElementById('btnPrevMonth');
+    const btnNext = document.getElementById('btnNextMonth');
+    if(!btnPrev || !btnNext) return;
+
+    btnPrev.onclick = () => {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar(currentDate);
+    };
+    btnNext.onclick = () => {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar(currentDate);
+    };
+  }
+
+  function actualizarBadgeRolNavbar() {
+    refrescarSesionLocal();
+    const container = document.getElementById('sessionRoleBadgeContainer');
+    if (!container) return;
+    
+    const rol = sesionUsuario ? (sesionUsuario.rolActivo || sesionUsuario.rolActive) : null;
+    if (rol) {
+      if (rol === "coordinador") {
+        container.innerHTML = `<span class="badge bg-danger px-3 py-2 animate__animated animate__fadeInDown"><i class="fa-solid fa-user-shield me-1"></i> Panel Coordinador</span>`;
+      } else {
+        container.innerHTML = `<span class="badge bg-secondary px-3 py-2 animate__animated animate__fadeInDown"><i class="fa-solid fa-link me-1"></i> Rol: Eslabón</span>`;
+      }
+    } else {
+      container.innerHTML = '';
+    }
+  }
+
+  function abrirModalGuardia(guardia, colorClass) {
+     refrescarSesionLocal();
+     const rol = sesionUsuario ? (sesionUsuario.rolActivo || sesionUsuario.rolActive || "eslabon") : "eslabon";
+     
+     if (rol === "coordinador") {
+       construirModalCoordinador(guardia);
+     } else {
+       construirModalEslabon(guardia, colorClass);
+     }
+  }
+
+  function construirModalCoordinador(guardia) {
+    const modalElem = document.getElementById('modalGuardia');
+    const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+    const body = document.getElementById('modalGuardiaBody');
+    const btnInscribir = document.getElementById('btnInscribirse');
+    document.getElementById('modalGuardiaFooter').style.display = 'none';
+    
+    if (btnInscribir) btnInscribir.style.display = "none"; 
+    
+    if (!guardia.id) {
+       body.innerHTML = `
+          <datalist id="listaEspGuardia"></datalist>
+          <div class="p-2">
+            <h5 class="text-primary border-bottom pb-2 mb-3"><i class="fa-solid fa-folder-plus me-2"></i>Aperturar Turno Operativo</h5>
+            <p class="small text-muted">Defina las necesidades logísticas de la misión para el día <strong>${guardia.fechaStr}</strong>.</p>
+            
+            <div class="mb-3">
+              <label class="form-label fw-bold small">Destino de la Misión</label>
+              <select id="newGuaDestino" class="form-select">
+                  <option value="" disabled selected>-- Seleccione un Destino Maestro --</option>
+              </select>
+            </div>
+            
+            <h6 class="fw-bold small mb-2 text-secondary">Definir Requerimientos de Personal</h6>
+            <div id="contenedorCamposReq">
+              <div class="row g-2 mb-2 alignment-row">
+                <div class="col-7">
+                  <input type="text" class="form-control form-control-sm req-esp" list="listaEspGuardia" placeholder="Escriba o seleccione">
+                </div>
+                <div class="col-3">
+                  <input type="number" class="form-control form-control-sm req-cant" placeholder="Cant" min="1">
+                </div>
+                <div class="col-2">
+                  <button class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.alignment-row').remove()"><i class="fa-solid fa-trash"></i></button>
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-outline-secondary btn-sm mb-3 w-100" onclick="agregarFilaRequerimiento()"><i class="fa-solid fa-plus me-1"></i>Añadir Especialidad Vacante</button>
+            
+            <button class="btn btn-success w-100 py-2 fw-bold shadow-sm" onclick="ejecutarCreacionGuardia('${guardia.fechaStr}', this)">
+              <i class="fa-solid fa-floppy-disk me-1"></i> Publicar Guardia en Calendario
+            </button>
+          </div>
+       `;
+       modal.show();
+       cargarListasAsincronasCoordinador(guardia); // Cargar datalist
+       return;
+    }
+
+    body.innerHTML = `
+      <datalist id="listaEspGuardia"></datalist>
+      <div class="p-1">
+        <div class="d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+          <h5 class="text-dark m-0"><i class="fa-solid fa-sliders me-2 text-primary"></i>Rol de Guardia: <strong>${guardia.fechaStr}</strong></h5>
+          <span class="badge bg-primary font-monospace">${guardia.id}</span>
+        </div>
+
+        <div class="card bg-light border-0 mb-3 shadow-sm">
+          <!-- Contenido de Transporte (Se mantiene igual) -->
+          <div class="card-body p-3">
+            <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-bus me-1"></i> Asignación de Unidad / Chofer</label>
+            <div class="d-flex gap-2 mb-2">
+              <select class="form-select form-select-sm" id="selectChoferMision"><option value="">-- Sin Unidad Asignada --</option></select>
+              <button class="btn btn-sm btn-primary px-3" id="btnAsignarTransporte" onclick="confirmarAsignacionTransporte('${guardia.id}')">Asignar</button>
+            </div>
+            <div id="subFormNuevoTransportista" class="p-2 border rounded bg-white d-none animate__animated animate__fadeIn mt-2">
+              <p class="fw-bold text-dark mb-2" style="font-size: 0.75rem;"><i class="fa-solid fa-square-plus text-success me-1"></i>REGISTRO RÁPIDO</p>
+              <div class="row g-2">
+                <div class="col-6"><input type="text" id="fastTraNombre" class="form-control form-control-sm" placeholder="Nombre / Empresa"></div>
+                <div class="col-6"><input type="text" id="fastTraTelefono" class="form-control form-control-sm" placeholder="Teléfono"></div>
+              </div>
+              <div class="d-flex justify-content-end gap-2 mt-2">
+                <button class="btn btn-xs btn-link text-muted p-0 border-0 text-decoration-none small" style="font-size:0.8rem;" onclick="cancelarRegistroChoferRapido()">Cancelar</button>
+                <button class="btn btn-success btn-sm px-2 py-0 fw-bold" style="font-size:0.8rem;" onclick="guardarChoferRapido('${guardia.id}')">Guardar y Seleccionar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <h6 class="fw-bold small text-secondary mb-2"><i class="fa-solid fa-users me-1"></i> Tripulación Inscrita (${guardia.voluntariosInscritos} Especialistas)</h6>
+        <div id="listaTripulantesDespacho" class="list-group mb-3 custom-scroll-list" style="max-height: 180px; overflow-y: auto;">
+          <div class="text-center p-3 text-muted small">Cargando tripulantes autorizados...</div>
+        </div>
+
+        <h6 class="fw-bold small text-secondary mb-2"><i class="fa-solid fa-clipboard-list me-1"></i> Modificar Requerimientos Operativos</h6>
+        <div id="contenedorReqEdicion" class="mb-2"></div>
+        <button class="btn btn-outline-secondary btn-sm mb-3 w-100" onclick="agregarFilaRequerimientoEdicion()"><i class="fa-solid fa-plus me-1"></i>Añadir Nueva Vacante</button>
+        <button class="btn btn-sm btn-outline-primary w-100 mb-4" id="btnSincronizarReq" onclick="guardarRequerimientosEditados('${guardia.id}', this)">Sincronizar Requerimientos</button>
+
+        <div class="row g-2 border-top pt-3">
+          <div class="col-6">
+            <button class="btn btn-success w-100 py-2 fw-bold shadow-sm btn-sm" onclick="descargarManifiestoPdf('${guardia.id}')">
+              <i class="fa-solid fa-file-pdf me-1"></i> Manifiesto (Control)
+            </button>
+          </div>
+          <div class="col-6">
+            <button class="btn btn-danger w-100 py-2 fw-bold shadow-sm btn-sm" onclick="ejecutarPurgaGuardia('${guardia.id}', '${guardia.fechaStr}')">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i> Eliminar Guardia
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    modal.show();
+    cargarListasAsincronasCoordinador(guardia);
+  }
+
+  function cargarListasAsincronasCoordinador(guardia) {
+    // 1. Cargar Transportistas
+    if (catalogoChoferes) {
+      renderizarSelectChoferes(catalogoChoferes, guardia.idTransportista || guardia.idTransporte);
+    } else {
+      google.script.run.withSuccessHandler(listaChoferes => {
+          catalogoChoferes = listaChoferes;
+          renderizarSelectChoferes(listaChoferes, guardia.idTransportista || guardia.idTransporte);
+      }).obtenerCatalogoVoluntariosTransporte();
+    }
+
+    // 2. Cargar Datalist de Especialidades (NUEVO)
+    poblarEspecialidadesGuardia();
+
+    // 3. Renderizar Tripulación (AHORA CLIQUEABLE)
+    const contenedorTrip = document.getElementById('listaTripulantesDespacho');
+    if (contenedorTrip) {
+        if (guardia.correosInscritos && guardia.correosInscritos.length > 0) {
+           contenedorTrip.innerHTML = '';
+           guardia.correosInscritos.forEach(stringCadena => {
+              const partes = stringCadena.split('|');
+              const emailLimpio = partes[2] ? partes[2].trim() : stringCadena.trim();
+              const textoVisual = stringCadena;
+              
+              const item = document.createElement('div');
+              // Añadimos list-group-item-action para el efecto hover y cursor pointer
+              item.className = "list-group-item d-flex justify-content-between align-items-center py-2 px-2 small animate__animated animate__fadeIn list-group-item-action";
+              item.style.cursor = "pointer";
+              // El evento principal abre la ficha
+              item.setAttribute("onclick", `abrirFichaDesdeGuardia('${emailLimpio}')`);
+              
+              item.innerHTML = `
+                <span class="text-truncate" style="max-width:80%; pointer-events:none;">
+                    <i class="fa-solid fa-user-check text-success me-2"></i><strong>${escapeHTML(textoVisual)}</strong>
+                </span>
+                <!-- event.stopPropagation() evita que el clic en remover abra la ficha -->
+                <button class="btn btn-outline-danger btn-sm p-1 border-0" title="Remover de Guardia" onclick="event.stopPropagation(); expulsarVoluntarioFuerza('${emailLimpio}', '${guardia.id}', this)">
+                  <i class="fa-solid fa-user-minus"></i>
+                </button>
+              `;
+              contenedorTrip.appendChild(item);
+           });
+        } else {
+           contenedorTrip.innerHTML = '<div class="text-center p-3 text-muted small">No hay especialistas apuntados.</div>';
+        }
+    }
+
+    // 4. Renderizar Requerimientos
+    const contenedorReq = document.getElementById('contenedorReqEdicion');
+    if (contenedorReq) contenedorReq.innerHTML = '';
+
+    if(guardia.detallesRequeridos && guardia.detallesRequeridos.length > 0) {
+       guardia.detallesRequeridos.forEach(req => {
+          agregarFilaRequerimientoEdicion(req.especialidad, req.cantidad);
+       });
+    }
+    // Obtencion de putnos de recogida:
+
+    google.script.run.withSuccessHandler(puntos => {
+        const selectDestino = document.getElementById('newGuaDestino');
+        if (selectDestino) {
+            // Guardamos el valor actual si existiera (para casos de edición futura)
+            const valActual = selectDestino.value;
+            selectDestino.innerHTML = '<option value="" disabled selected>-- Seleccione un Destino Maestro --</option>';
+            
+            puntos.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p.id;     // GUARDAMOS EL ID (D001, P001, etc)
+                opt.innerText = p.nombre; // MOSTRAMOS EL NOMBRE
+                if(valActual === p.id) opt.selected = true;
+                selectDestino.appendChild(opt);
+            });
+        }
+    }).obtenerPuntosRecogidaMaestro();
+
+    const selectDestino = document.getElementById('newGuaDestino');
+      if (!selectDestino) return;
+
+      const renderizar = (puntos) => {
+          const valActual = selectDestino.value;
+          selectDestino.innerHTML = '<option value="" disabled selected>-- Seleccione un Destino Maestro --</option>';
+          puntos.forEach(p => {
+              const opt = document.createElement('option');
+              opt.value = p.id;
+              opt.innerText = p.nombre;
+              if(valActual === p.id) opt.selected = true;
+              selectDestino.appendChild(opt);
+          });
+      };
+
+      if (catalogoPuntos) {
+          renderizar(catalogoPuntos);
+      } else {
+          google.script.run.withSuccessHandler(puntos => {
+              catalogoPuntos = puntos;
+              renderizar(puntos);
+          }).obtenerPuntosRecogidaMaestro();
+      }
+  }
+
+  function agregarFilaRequerimiento() {
+    const div = document.createElement('div');
+    div.className = 'row g-2 mb-2 alignment-row';
+    div.innerHTML = `
+      <div class="col-7"><input type="text" class="form-control form-control-sm req-esp" list="listaEspGuardia" placeholder="Escriba o seleccione"></div>
+      <div class="col-3"><input type="number" class="form-control form-control-sm req-cant" placeholder="Cant" min="1"></div>
+      <div class="col-2"><button class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.alignment-row').remove()"><i class="fa-solid fa-trash"></i></button></div>
+    `;
+    document.getElementById('contenedorCamposReq').appendChild(div);
+  }
+
+  function agregarFilaRequerimientoEdicion(esp = "", cant = "") {
+    const div = document.createElement('div');
+    div.className = 'row g-2 mb-2 alignment-row-edit';
+    div.innerHTML = `
+      <div class="col-7"><input type="text" class="form-control form-control-sm edit-esp" list="listaEspGuardia" value="${esp}" placeholder="Escriba o seleccione"></div>
+      <div class="col-3"><input type="number" class="form-control form-control-sm edit-cant" value="${cant}" placeholder="Cant" min="1"></div>
+      <div class="col-2"><button class="btn btn-outline-danger btn-sm w-100" onclick="this.closest('.alignment-row-edit').remove()"><i class="fa-solid fa-trash"></i></button></div>
+    `;
+    document.getElementById('contenedorReqEdicion').appendChild(div);
+  }
+
+  function renderizarSelectChoferes(listaChoferes, idTransportistaAsignado) {
+    const select = document.getElementById('selectChoferMision');
+    if(!select) return;
+    
+    select.innerHTML = '<option value="">-- Sin Unidad Asignada --</option>';
+    listaChoferes.forEach(chofer => {
+       const option = document.createElement('option');
+       option.value = chofer.id;
+       option.innerText = chofer.nombre;
+       
+       if (idTransportistaAsignado && idTransportistaAsignado == chofer.id) {
+          option.selected = true;
+       }
+       select.appendChild(option);
+    });
+
+    const optNuevo = document.createElement('option');
+    optNuevo.value = "__NUEVO__";
+    optNuevo.innerText = "➕ Agregar Nuevo...";
+    optNuevo.style.fontWeight = "bold";
+    optNuevo.style.color = "#198754";
+    select.appendChild(optNuevo);
+
+    select.onchange = function() {
+      const contenedorForm = document.getElementById('subFormNuevoTransportista');
+      if (this.value === "__NUEVO__") {
+        if (contenedorForm) contenedorForm.classList.remove('d-none');
+      } else {
+        if (contenedorForm) contenedorForm.classList.add('d-none');
+      }
+    };
+  }
+
+  
+
+  function ejecutarCreacionGuardia(fechaStr, btn) {
+    const destino = document.getElementById('newGuaDestino').value.trim();
+    if(!destino) { 
+        document.getElementById('newGuaDestino').classList.add('border-danger');
+        setTimeout(() => document.getElementById('newGuaDestino').classList.remove('border-danger'), 2000);
+        return; 
+    }
+
+    let reqs = [];
+    document.querySelectorAll('.alignment-row').forEach(row => {
+       const esp = row.querySelector('.req-esp').value.trim();
+       const cant = row.querySelector('.req-cant').value;
+       if(esp && cant) { reqs.push({ especialidad: esp, cantidad: cant }); }
+    });
+
+    let emailCoord = "";
+    if (window.sesionUsuario && window.sesionUsuario.email) {
+        emailCoord = window.sesionUsuario.email;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Publicando...';
+
+    google.script.run.withSuccessHandler(res => {
+       if(res.status === "SUCCESS") {
+          
+          // NUEVO: Reemplazamos el alert por una pantalla de éxito dentro del modal
+          const body = document.getElementById('modalGuardiaBody');
+          body.innerHTML = `
+             <div class="p-5 text-center animate__animated animate__zoomIn">
+               <i class="fa-solid fa-circle-check text-success fa-5x mb-3"></i>
+               <h4 class="text-dark fw-bold mb-1">¡Guardia Publicada!</h4>
+               <p class="text-muted small">El turno ha sido agendado exitosamente en el calendario logístico.</p>
+             </div>
+          `;
+          
+          // Cerramos el modal automáticamente después de 1.5 segundos y refrescamos los datos
+          setTimeout(() => {
+              const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalGuardia'));
+              if (modalInstance) modalInstance.hide();
+              cargarDatos(); // Recarga los colores del calendario
+          }, 1500);
+
+       } else {
+          // En caso de error, mostramos el mensaje en el botón y lo habilitamos de nuevo
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> Error al publicar`;
+          btn.classList.replace('btn-success', 'btn-danger');
+          
+          setTimeout(() => {
+             btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Publicar Guardia en Calendario';
+             btn.classList.replace('btn-danger', 'btn-success');
+          }, 3000);
+       }
+    }).crearNuevaGuardiaCoordinador(fechaStr, { destino: destino, requerimientos: reqs }, emailCoord);
+  }
+
+  function hablandoClaro(msg) {
+    alert(msg);
+  }
+
+  function expulsarVoluntarioFuerza(email, idGuardia, btn) {
+     if(!confirm(`¿Confirma la desincorporación forzada del correo ${email} de este turno operativo?`)) return;
+     btn.disabled = true;
+     google.script.run.withSuccessHandler(res => {
+        if(res.status === "SUCCESS") {
+           let itemRow = btn.closest('.list-group-item');
+           itemRow.className += " animate__animated animate__fadeOutRight";
+           setTimeout(() => itemRow.remove(), 500);
+           cargarDatos(); 
+        } else {
+           alert(res.message);
+           btn.disabled = false;
+        }
+     }).removerVoluntarioDeGuardia(email, idGuardia);
+  }
+
+  function guardarRequerimientosEditados(idGuardia, btn) {
+     let reqs = [];
+     document.querySelectorAll('.alignment-row-edit').forEach(row => {
+        const espInput = row.querySelector('.edit-esp');
+        const cantInput = row.querySelector('.edit-cant');
+        if (espInput && cantInput) {
+           const esp = espInput.value.trim();
+           const cant = cantInput.value;
+           if(esp && cant) { reqs.push({ especialidad: esp, cantidad: parseInt(cant) }); }
+        }
+     });
+
+     // 1. Estado de Carga en el Botón
+     btn.disabled = true;
+     const textoOriginal = "Sincronizar Requerimientos";
+     btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sincronizando con Servidor...';
+
+     google.script.run
+        .withSuccessHandler(res => {
+            if(res && (res.status === "SUCCESS" || res.status === "success")) {
+               
+               // 2. ÉXITO VISUAL: Reemplazamos el cuerpo del modal por una confirmación elegante
+               const body = document.getElementById('modalGuardiaBody');
+               body.innerHTML = `
+                <div class="p-5 text-center animate__animated animate__zoomIn">
+                    <div class="text-primary mb-3">
+                        <i class="fa-solid fa-clipboard-check fa-5x"></i>
+                    </div>
+                    <h4 class="text-dark fw-bold">Demanda Actualizada</h4>
+                    <p class="text-muted small">Los requerimientos técnicos de la guardia han sido modificados y guardados en el registro maestro.</p>
+                </div>`;
+
+               // 3. Cerramos el modal automáticamente después de 1.8 segundos y refrescamos el calendario
+               setTimeout(() => {
+                   const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalGuardia'));
+                   if (modalInstance) modalInstance.hide();
+                   cargarDatos();
+               }, 1800);
+
+            } else {
+               // Manejo de error visual en el botón
+               btn.disabled = false;
+               btn.innerHTML = '<i class="fa-solid fa-triangle-exclamation me-1"></i> Error al Sincronizar';
+               btn.classList.replace('btn-outline-primary', 'btn-danger');
+               setTimeout(() => {
+                   btn.innerHTML = textoOriginal;
+                   btn.classList.replace('btn-danger', 'btn-outline-primary');
+               }, 3000);
+            }
+        })
+        .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-wifi me-1"></i> Fallo de Red';
+            console.error("Falla de red asíncrona:", err);
+        })
+        .actualizarRequerimientosGuardia(idGuardia, reqs);
+  }
+
+  /**
+   * Transforma el modal de detalles en una pantalla de advertencia crítica
+   */
+  function ejecutarPurgaGuardia(idGuardia, fechaStr) {
+     const body = document.getElementById('modalGuardiaBody');
+     
+     // Inyectamos el diseño de alerta crítica directamente en el cuerpo del modal
+     body.innerHTML = `
+       <div class="text-center p-4 animate__animated animate__fadeIn">
+         <div class="text-danger mb-3">
+           <i class="fa-solid fa-triangle-exclamation fa-4x animate__animated animate__flash animate__infinite animate__slower"></i>
+         </div>
+         <h4 class="fw-bold text-dark mb-2">Advertencia Crítica</h4>
+         <p class="text-muted small mb-3">¿Está absolutamente seguro de eliminar la guardia del día <strong class="fs-6">${fechaStr}</strong>?</p>
+         
+         <div class="alert alert-danger text-start small border-0 bg-danger-subtle mb-4">
+            <i class="fa-solid fa-circle-info me-1"></i> Esta acción eliminará de forma completa y en cascada todos los requerimientos y desvinculará a todos los voluntarios inscritos de forma <strong>irreversible</strong>.
+         </div>
+         
+         <div class="d-flex justify-content-center gap-2">
+           <!-- Si cancela, volvemos a llamar a construirModalCoordinador pasándole la guardia actual para restaurar la vista original -->
+           <button type="button" class="btn btn-light border w-50 fw-bold shadow-sm" onclick="construirModalCoordinador(guardiasData.find(g => g.id === '${idGuardia}'))">Cancelar</button>
+           <button type="button" class="btn btn-danger w-50 fw-bold shadow-sm" onclick="confirmarEliminacionGuardiaFinal('${idGuardia}')">Sí, Eliminar</button>
+         </div>
+       </div>
+     `;
+  }
+
+  /**
+   * Ejecuta la eliminación final comunicándose con el servidor
+   */
+  function confirmarEliminacionGuardiaFinal(idGuardia) {
+     const body = document.getElementById('modalGuardiaBody');
+     
+     // Pantalla de carga
+     body.innerHTML = `
+        <div class="p-5 text-center animate__animated animate__fadeIn">
+            <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-danger">Purgando registros...</h5>
+            <p class="small text-muted">Eliminando dependencias en cascada.</p>
+        </div>`;
+
+     google.script.run.withSuccessHandler(res => {
+        if(res.status === "SUCCESS") {
+           // Pantalla de Éxito
+           body.innerHTML = `
+             <div class="p-5 text-center animate__animated animate__zoomIn">
+               <i class="fa-solid fa-circle-check text-success fa-4x mb-3"></i>
+               <h4 class="text-dark fw-bold">Guardia Eliminada</h4>
+               <p class="text-muted small">El registro ha sido purgado del sistema.</p>
+             </div>
+           `;
+           
+           // Cerramos el modal automáticamente después de 1.5 segundos y refrescamos el calendario
+           setTimeout(() => {
+               const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalGuardia'));
+               if (modalInstance) modalInstance.hide();
+               cargarDatos();
+           }, 1500);
+
+        } else {
+           alert("Error al purgar registro: " + res.message); // Fallback en caso de error de base de datos
+           cargarDatos();
+        }
+     }).eliminarGuardiaCompletaCoordinador(idGuardia);
+  }
+
+  function escapeHTML(str) {
+    return str ? str.replace(/[&<>'"]/g, 
+      tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+    ) : '';
+  }
+
+  function descargarManifiestoPdf(idGuardia) {
+    if (!idGuardia) return;
+    
+    google.script.run
+      .withSuccessHandler(urlOficial => {
+         let urlBase = urlOficial;
+         
+         if (!urlBase) {
+            urlBase = window.location.href.split('?')[0];
+         }
+         
+         if (urlBase.endsWith('/userCodeAppPanel')) {
+            urlBase = urlBase.replace('/userCodeAppPanel', '/exec');
+         }
+         
+         const urlManifiesto = `${urlBase}?page=manifiesto&id=${idGuardia}`;
+         window.open(urlManifiesto, '_blank');
+      })
+      .withFailureHandler(err => {
+         const urlFallback = window.location.href.split('?')[0].replace('/userCodeAppPanel', '/exec');
+         window.open(`${urlFallback}?page=manifiesto&id=${idGuardia}`, '_blank');
+      })
+      .obtenerUrlWebApp();
+  }
+
+  function construirModalEslabon(guardia, colorClass) {
+     const modalElem = document.getElementById('modalGuardia');
+     const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+     const body = document.getElementById('modalGuardiaBody');
+     let btnInscribir = document.getElementById('btnInscribirse');
+     document.getElementById('modalGuardiaFooter').style.display = 'flex';
+     
+     if (btnInscribir) {
+        const nuevoBtn = btnInscribir.cloneNode(true);
+        btnInscribir.parentNode.replaceChild(nuevoBtn, btnInscribir);
+        btnInscribir = nuevoBtn;
+        btnInscribir.style.display = "block"; 
+     }
+     
+     const esLleno = (colorClass === 'guardia-azul');
+     const esPasado = (colorClass === 'guardia-gris');
+     const emailLogueado = sesionUsuario ? sesionUsuario.email.toLowerCase().trim() : "";
+     
+     // CORRECCIÓN: Buscamos el email dentro de la cadena "Nombre | Especialidad | email"
+     const yaInscrito = guardia.correosInscritos && guardia.correosInscritos.some(str => str.toLowerCase().includes(emailLogueado));
+
+     let html = `
+        <h5 class="text-center mb-3">Guardia Programada: <strong>${guardia.fechaStr}</strong></h5>
+        <div class="alert ${guardia.tieneTransporte ? 'alert-success' : 'alert-warning'} text-center py-2">
+            <i class="fa-solid fa-bus me-2"></i>Estatus de Transporte: <strong>${guardia.tieneTransporte ? 'Confirmado' : 'Sin unidad asignada'}</strong>
+        </div>
+        <h6 class="mt-3 border-bottom pb-2">Desglose de Especialidades Requeridas</h6>
+        <p class="small text-muted mb-2">Cobertura actual: ${guardia.voluntariosInscritos} inscritos de ${guardia.requerimientoTotal} necesarios.</p>
+        <ul class="list-group list-group-flush mb-3">
+     `;
+     
+     if(guardia.detallesRequeridos && guardia.detallesRequeridos.length > 0) {
+        guardia.detallesRequeridos.forEach(req => {
+            html += `<li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                        <span><i class="fa-solid fa-user-doctor text-secondary me-2"></i>${req.especialidad}</span>
+                        <span class="badge bg-secondary rounded-pill">${req.cantidad} vacantes</span>
+                     </li>`;
+        });
+     } else {
+        html += `<li class="list-group-item text-muted px-0">Sin especificaciones técnicas detalladas.</li>`;
+     }
+     html += `</ul>`;
+     
+     if (esPasado) {
+         html += `<div class="alert alert-secondary text-center mt-3 mb-0 small"><i class="fa-solid fa-clock-rotate-left me-1"></i> Este turno operativo ya finalizó.</div>`;
+         if(btnInscribir) {
+            btnInscribir.disabled = true;
+            btnInscribir.className = "btn btn-secondary w-100";
+            btnInscribir.innerText = "Guardia Finalizada";
+         }
+     } else if (yaInscrito) {
+         // --- CASO: YA ESTÁ INSCRITO (CAMBIO A BOTÓN DE BAJA) ---
+         html += `<div class="alert alert-success text-center mt-3 mb-0 animate__animated animate__pulse animate__infinite animate__slower"><i class="fa-solid fa-circle-check me-1"></i> Usted ya se encuentra postulado.</div>`;
+         if(btnInscribir) {
+            btnInscribir.disabled = false;
+            btnInscribir.className = "btn btn-danger w-100 shadow-sm";
+            btnInscribir.innerHTML = '<i class="fa-solid fa-user-minus me-1"></i> Darme de baja en esta guardia';
+            btnInscribir.onclick = () => procesarRetiroDirecto(emailLogueado, guardia.id, btnInscribir, modal);
+         }
+     } else if (esLleno) {
+         html += `<div class="alert alert-info text-center mt-3 mb-0"><i class="fa-solid fa-lock me-1"></i> El cupo operativo se encuentra al 100%.</div>`;
+         if(btnInscribir) {
+            btnInscribir.disabled = true;
+            btnInscribir.className = "btn btn-secondary w-100";
+            btnInscribir.innerText = "Cupo Completo";
+         }
+     } else {
+         // --- CASO: NO INSCRITO ---
+         if(btnInscribir) {
+            btnInscribir.disabled = false;
+            btnInscribir.className = "btn btn-primary w-100 shadow-sm";
+            btnInscribir.innerHTML = '<i class="fa-solid fa-user-plus me-1"></i> Inscribirme como Voluntario';
+            btnInscribir.onclick = () => procesarInscripcionDirecta(emailLogueado, guardia.id, btnInscribir, modal);
+         }
+     }
+
+     body.innerHTML = html;
+     modal.show();
+  }
+
+  function procesarInscripcionDirecta(email, idGuardia, btn, modal) {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Registrando...';
+      
+      google.script.run
+        .withSuccessHandler(res => {
+            if (res.status === "SUCCESS") {
+                const body = document.getElementById('modalGuardiaBody');
+                body.innerHTML = `
+                    <div class="p-5 text-center animate__animated animate__zoomIn">
+                        <i class="fa-solid fa-circle-check text-success fa-5x mb-3"></i>
+                        <h4 class="text-dark fw-bold">¡Postulación Exitosa!</h4>
+                        <p class="text-muted small">Tu nombre ha sido agregado a la tripulación del día.</p>
+                    </div>`;
+                
+                setTimeout(() => {
+                    modal.hide();
+                    cargarDatos(); // Refresca el calendario
+                }, 1800);
+            } else {
+                alert("Error: " + res.message);
+                btn.disabled = false;
+                btn.innerText = "Reintentar inscripción";
+            }
+        })
+        .withFailureHandler(err => {
+            btn.disabled = false;
+            btn.innerText = "Fallo de red";
+        })
+        .asignarVoluntarioAGuardia(email, idGuardia);
+  }
+
+  function confirmarAsignacionTransporte(idGuardia) {
+      const select = document.getElementById('selectChoferMision');
+      const btn = document.getElementById('btnAsignarTransporte');
+      
+      if (!select || !btn) return;
+      
+      const idTransportista = select.value;
+
+      // 1. Validación visual en lugar de Alert
+      if (idTransportista === "__NUEVO__" || idTransportista === "") {
+         select.classList.add('is-invalid', 'border-danger');
+         setTimeout(() => select.classList.remove('is-invalid', 'border-danger'), 2000);
+         return;
+      }
+      
+      // 2. Estado de Carga
+      btn.disabled = true;
+      const textoOriginal = btn.innerHTML; // Guarda "Asignar"
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+      
+      google.script.run
+          .withSuccessHandler(function(response) {
+              if (response && response.status === "SUCCESS") {
+                  
+                  // 3. ÉXITO VISUAL: Botón cambia a Verde con Check
+                  btn.classList.replace('btn-primary', 'btn-success');
+                  btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> ¡Asignado!';
+                  
+                  // Actualizamos el calendario de fondo (para que aparezca el icono del bus)
+                  if (typeof cargarDatos === "function") cargarDatos(); 
+
+                  // 4. Regresamos a la normalidad después de 2.5 segundos
+                  setTimeout(() => {
+                      btn.disabled = false;
+                      btn.classList.replace('btn-success', 'btn-primary');
+                      btn.innerHTML = textoOriginal;
+                  }, 2500);
+
+              } else {
+                  // FALLO VISUAL: Botón cambia a Rojo
+                  btn.classList.replace('btn-primary', 'btn-danger');
+                  btn.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> Error';
+                  setTimeout(() => {
+                      btn.disabled = false;
+                      btn.classList.replace('btn-danger', 'btn-primary');
+                      btn.innerHTML = textoOriginal;
+                  }, 3000);
+              }
+          })
+          .withFailureHandler(function(err) {
+              // ERROR DE CONEXIÓN
+              btn.classList.replace('btn-primary', 'btn-danger');
+              btn.innerHTML = '<i class="fa-solid fa-wifi me-1"></i> Reintentar';
+              setTimeout(() => {
+                  btn.disabled = false;
+                  btn.classList.replace('btn-danger', 'btn-primary');
+                  btn.innerHTML = textoOriginal;
+              }, 3000);
+          })
+          .actualizarTransporteGuardia(idGuardia, idTransportista);
+  }
+
+  /**
+   * PASO 1: Muestra la pantalla de confirmación elegante dentro del modal
+   */
+  function procesarRetiroDirecto(email, idGuardia, btn, modal) {
+      const body = document.getElementById('modalGuardiaBody');
+      
+      // Buscamos la guardia en memoria para poder "regresar" si el usuario cancela
+      const guardiaActual = guardiasData.find(g => g.id === idGuardia);
+
+      body.innerHTML = `
+        <div class="text-center p-4 animate__animated animate__fadeIn">
+          <div class="text-warning mb-3">
+            <i class="fa-solid fa-user-minus fa-4x animate__animated animate__pulse animate__infinite"></i>
+          </div>
+          <h4 class="fw-bold text-dark">¿Retirar Postulación?</h4>
+          <p class="text-muted small mb-4">Está a punto de desvincularse de la guardia del día <strong>${guardiaActual.fechaStr}</strong>. Su cupo quedará disponible para otro voluntario.</p>
+          
+          <div class="d-flex justify-content-center gap-2">
+            <!-- Si cancela, lo regresamos a la vista normal del eslabón -->
+            <button type="button" class="btn btn-light border w-50 fw-bold shadow-sm" onclick="abrirModalGuardia(guardiasData.find(g => g.id === '${idGuardia}'), 'guardia-verde')">Cancelar</button>
+            <button type="button" class="btn btn-danger w-50 fw-bold shadow-sm" onclick="ejecutarBajaDefinitiva('${email}', '${idGuardia}')">Sí, Retirarme</button>
+          </div>
+        </div>
+      `;
+  }
+
+  /**
+   * PASO 2: Ejecuta la comunicación con el servidor y muestra el éxito final
+   */
+  function ejecutarBajaDefinitiva(email, idGuardia) {
+      const body = document.getElementById('modalGuardiaBody');
+      
+      // Pantalla de procesamiento
+      body.innerHTML = `
+        <div class="p-5 text-center animate__animated animate__fadeIn">
+            <div class="spinner-border text-danger mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-danger">Procesando baja...</h5>
+            <p class="small text-muted">Sincronizando con la Red Operativa.</p>
+        </div>`;
+
+      google.script.run
+        .withSuccessHandler(res => {
+            if (res.status === "SUCCESS") {
+                // Pantalla de éxito final
+                body.innerHTML = `
+                    <div class="p-5 text-center animate__animated animate__zoomIn">
+                        <i class="fa-solid fa-circle-check text-success fa-5x mb-3"></i>
+                        <h4 class="text-dark fw-bold">Baja Confirmada</h4>
+                        <p class="text-muted small">Tu cupo ha sido liberado exitosamente.</p>
+                    </div>`;
+                
+                // Cerramos y refrescamos el calendario
+                setTimeout(() => {
+                    const modalInstance = bootstrap.Modal.getInstance(document.getElementById('modalGuardia'));
+                    if (modalInstance) modalInstance.hide();
+                    cargarDatos(); 
+                }, 1800);
+            } else {
+                alert("Error al procesar el retiro: " + res.message);
+                cargarDatos();
+            }
+        })
+        .withFailureHandler(err => {
+            alert("Error crítico de red.");
+        })
+        .removerVoluntarioDeGuardia(email, idGuardia);
+  }
+
+  function cancelarRegistroChoferRapido() {
+    const select = document.getElementById('selectChoferMision');
+    const contenedorForm = document.getElementById('subFormNuevoTransportista');
+    if(select) select.value = "";
+    if(contenedorForm) contenedorForm.classList.add('d-none');
+  }
+
+  function guardarChoferRapido(idGuardia) {
+    const nombreInput = document.getElementById('fastTraNombre');
+    const telfInput = document.getElementById('fastTraTelefono');
+    const contenedorForm = document.getElementById('subFormNuevoTransportista');
+    
+    // 1. Validación visual (Borde rojo en lugar de Alert)
+    if(!nombreInput || !nombreInput.value.trim()) {
+      nombreInput.classList.add('is-invalid', 'border-danger');
+      setTimeout(() => nombreInput.classList.remove('is-invalid', 'border-danger'), 2000);
+      return;
+    }
+
+    const nombre = nombreInput.value.trim();
+    const telefono = telfInput ? telfInput.value.trim() : "";
+
+    // 2. Capturamos el botón para animarlo
+    const btnGuardar = contenedorForm.querySelector('.btn-success');
+    const textoOriginalBtn = btnGuardar.innerHTML;
+
+    // 3. Estado de Carga
+    nombreInput.disabled = true;
+    if(telfInput) telfInput.disabled = true;
+    btnGuardar.disabled = true;
+    btnGuardar.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+
+    google.script.run
+      .withSuccessHandler(res => {
+          if(res && res.status === "SUCCESS") {
+             
+             // 4. ÉXITO VISUAL EN EL BOTÓN
+             btnGuardar.innerHTML = '<i class="fa-solid fa-check-double me-1"></i> ¡Registrado!';
+             
+             // Indexamos el nuevo transportista en la memoria y actualizamos el Select
+             if (catalogoChoferes) {
+               catalogoChoferes.push(res.nuevoTransportista);
+             }
+             renderizarSelectChoferes(catalogoChoferes || [res.nuevoTransportista], res.nuevoTransportista.id);
+             
+             // 5. Ocultamos el formulario después de 1.5s y lo reseteamos para futuros usos
+             setTimeout(() => {
+                 if(contenedorForm) contenedorForm.classList.add('d-none');
+                 nombreInput.value = "";
+                 if(telfInput) telfInput.value = "";
+                 nombreInput.disabled = false;
+                 if(telfInput) telfInput.disabled = false;
+                 btnGuardar.disabled = false;
+                 btnGuardar.innerHTML = textoOriginalBtn;
+             }, 1500);
+
+          } else {
+             // ERROR VISUAL EN EL BOTÓN
+             btnGuardar.classList.replace('btn-success', 'btn-danger');
+             btnGuardar.innerHTML = '<i class="fa-solid fa-xmark me-1"></i> Error';
+             setTimeout(() => {
+                 btnGuardar.disabled = false;
+                 btnGuardar.classList.replace('btn-danger', 'btn-success');
+                 btnGuardar.innerHTML = textoOriginalBtn;
+                 nombreInput.disabled = false;
+                 if(telfInput) telfInput.disabled = false;
+             }, 3000);
+          }
+      })
+      .withFailureHandler(err => {
+          // ERROR DE RED EN EL BOTÓN
+          btnGuardar.classList.replace('btn-success', 'btn-danger');
+          btnGuardar.innerHTML = '<i class="fa-solid fa-wifi me-1"></i> Fallo de Red';
+          setTimeout(() => {
+              btnGuardar.disabled = false;
+              btnGuardar.classList.replace('btn-danger', 'btn-success');
+              btnGuardar.innerHTML = textoOriginalBtn;
+              nombreInput.disabled = false;
+              if(telfInput) telfInput.disabled = false;
+          }, 3000);
+      })
+      .registrarNuevoTransportistaRapido(nombre, telefono);
+  }
+
+  function recibirRespuestaActualizacionPerfil(res, btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fa-solid fa-floppy-disk me-1"></i> Guardar Cambios';
+    
+    if (res && res.status === "SUCCESS") {
+      sessionStorage.setItem('userProfile', JSON.stringify(res.perfil));
+      alert("¡Cambios almacenados y sincronizados con la Red Operativa de Drive con éxito!");
+      cargarVista('perfil');
+    } else {
+      alert("Error reportado por el servidor: " + (res ? res.message : "Estructura de respuesta inválida."));
+    }
+  }
+
+  // Caché para no consultar las especialidades múltiples veces
+  let cacheEspecialidadesGuardia = null;
+
+  /**
+   * Carga la lista de especialidades en el combo-box (datalist) del modal
+   */
+  function poblarEspecialidadesGuardia() {
+      const dl = document.getElementById('listaEspGuardia');
+      if (!dl) return;
+      
+      if (cacheEspecialidadesGuardia) {
+          dl.innerHTML = cacheEspecialidadesGuardia.map(e => `<option value="${e}">`).join('');
+      } else {
+          google.script.run.withSuccessHandler(lista => {
+              cacheEspecialidadesGuardia = lista;
+              if (document.getElementById('listaEspGuardia')) {
+                  document.getElementById('listaEspGuardia').innerHTML = lista.map(e => `<option value="${e}">`).join('');
+              }
+          }).obtenerEspecialidadesUnicasMaestro();
+      }
+  }
+
+  /**
+   * Puente: Recibe el correo desde el modal de Guardia, busca el ID localmente y abre la Ficha
+   */
+  function abrirFichaDesdeGuardia(email) {
+      // 1. Verificamos si el directorio de voluntarios ya cargó en memoria
+      if (typeof poolVoluntarios === 'undefined' || poolVoluntarios.length === 0) {
+          alert("El directorio se está sincronizando en segundo plano. Por favor, intente en unos segundos.");
+          return;
+      }
+      
+      // 2. Buscamos al voluntario por su correo
+      const vol = poolVoluntarios.find(v => v.email && v.email.toLowerCase() === email.toLowerCase());
+      
+      // 3. Disparamos la función que creamos en Perfil.html
+      if (vol && typeof abrirFichaVoluntario === 'function') {
+          abrirFichaVoluntario(vol.id);
+      } else {
+          alert("No se encontró el perfil detallado de este voluntario. Es posible que sea un usuario antiguo que aún no ha completado su registro (Falta ID).");
+      }
+  }
+</script>
