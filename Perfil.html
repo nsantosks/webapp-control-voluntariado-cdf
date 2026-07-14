@@ -1,0 +1,841 @@
+<div class="row justify-content-center animate__animated animate__fadeIn">
+  <div class="col-12 col-md-10">
+    
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header bg-custom-brand text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fa-solid fa-user-gear me-2"></i>Mi Perfil Operativo</h5>
+        <span class="badge" id="lblEstatusVerificacion"></span>
+      </div>
+      <div class="card-body">
+        <form id="formPerfil" onsubmit="actualizarPerfil(event); return false;" class="needs-validation" novalidate>
+          <input type="hidden" id="perfilUrlFotoActual" value="">
+          <input type="hidden" id="perfilUrlDocActual" value="">
+
+          <div class="text-center mb-4 position-relative">
+            <div class="d-inline-block position-relative">
+              <img id="avatarPrevisualizacion" src="https://placehold.co/130x130/f1f5f9/1e3a8a?text=SELFIE" 
+                   class="rounded-circle img-thumbnail border-primary shadow-sm" 
+                   style="width: 130px; height: 130px; object-fit: cover; cursor: pointer;"
+                   onclick="document.getElementById('inputFotoCamara').click();"
+                   alt="Foto de Perfil">
+              <button type="button" class="btn btn-sm btn-primary position-absolute bottom-0 end-0 rounded-circle shadow"
+                      style="width: 32px; height: 32px; padding: 0;"
+                      onclick="document.getElementById('inputFotoCamara').click();">
+                <i class="fa-solid fa-camera"></i>
+              </button>
+            </div>
+            <input type="file" id="inputFotoCamara" accept="image/*" capture="user" style="display: none;" onchange="procesarPrevisualizacionFoto(this)">
+            <div class="small text-muted mt-2">Haga clic sobre el círculo para capturar o actualizar su Selfie (Obligatorio)</div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold small">Cédula de Identidad</label>
+              <input type="text" class="form-control" id="perfilCedula" required placeholder="Ej: V-12345678">
+              <div class="invalid-feedback">La cédula de identidad es requerida para el control regulatorio vial.</div>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold small">Nombre Completo</label>
+              <input type="text" class="form-control" id="perfilNombre" required>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold small">Área de Voluntariado</label>
+              <select class="form-select" id="perfilVoluntariado" required>
+                  <option value="" disabled selected>Seleccione su área macro</option>
+                  <option value="Medicina">Medicina</option>
+                  <option value="Transporte">Transporte</option>
+                  <option value="Apoyo Logístico">Apoyo Logístico</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label fw-bold small">Especialidad Técnica</label>
+              <input type="text" class="form-control" id="perfilEspecialidad" list="listaEspecialidades" placeholder="Escriba o seleccione su especialidad" required>
+              <datalist id="listaEspecialidades"></datalist>
+            </div>
+          </div>
+
+          <!-- Formulario -->
+          <div class="row">
+            <!--Punto de Recogida -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-bold small">Punto de Recogida Preferido</label>
+              <select class="form-select" id="perfilRecogida" required>
+                <option value="" disabled selected>Cargando rutas...</option>
+              </select>
+            </div>
+            <!--Telefono de Contacto -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-bold small">Teléfono de Contacto</label>
+              <input type="tel" class="form-control" id="perfilTelefono" required placeholder="+58 414-1234567">
+            </div>
+            <!--Direccion -->
+            <div class="col-md-4 mb-3">
+              <label class="form-label fw-bold small">Dirección de Habitación</label>
+              <input type="text" class="form-control" id="perfilDireccion" required placeholder="Ej: Av. Bolívar, Res. Las Aves">
+            </div>
+          </div>
+
+          <div class="mb-4 p-3 border rounded bg-light">
+            <label class="form-label fw-bold small text-primary"><i class="fa-solid fa-file-shield me-1"></i> Soporte Documental / Credenciales Médicas y Técnicas</label>
+            <input type="file" id="inputDocumentacion" class="form-control form-control-sm" accept=".pdf,.jpg,.jpeg,.png" onchange="procesarDocumentoLocal(this)">
+            <div class="small text-muted mt-1">Adjunte constancias de especialidad, títulos o credenciales en formato PDF o Imagen.</div>
+            
+            <div id="contenedorDocExistente" class="mt-2 small d-none">
+              <i class="fa-solid fa-link text-success me-1"></i> 
+              <a id="linkDocExistente" href="#" target="_blank" class="text-decoration-none fw-medium">Ver credencial cargada actualmente en Drive</a>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center mt-2">
+            <button type="submit" class="btn btn-primary px-4" id="btnGuardarPerfil">Guardar Cambios</button>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="cerrarSesionApp()">
+              <i class="fa-solid fa-right-from-bracket me-1"></i> Cerrar Sesión
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="contenedorBloqueo" class="d-none mb-4">
+       <div class="alert alert-warning border-0 shadow-sm text-start p-3 d-flex align-items-center">
+          <i class="fa-solid fa-shield-halved text-warning fs-3 me-3"></i>
+          <div>
+             <strong class="d-block">Perfil en fase de revisión documental</strong>
+             <span class="small text-muted">El acceso al calendario de relevos se activará automáticamente cuando la coordinación valide sus credenciales.</span>
+          </div>
+       </div>
+    </div>
+
+    <div id="seccionCalendarioDesplegable" class="d-none">
+      
+      <div id="panelAccionesCoordinador" class="d-none mb-3">
+        <div class="row g-2">
+          <div class="col-6">
+            <button class="btn btn-sm btn-dark w-100 py-2 fw-bold shadow-sm" id="btnToggleCalendario" onclick="toggleVisibilidadSeccion('wrapperColapsableCalendario', this, 'Calendario')">
+              <i class="fa-solid fa-calendar-minus me-1"></i> Ocultar Calendario
+            </button>
+          </div>
+          <div class="col-6">
+            <button class="btn btn-sm btn-primary w-100 py-2 fw-bold shadow-sm" id="btnToggleVoluntarios" onclick="toggleVisibilidadSeccion('wrapperColapsableVoluntarios', this, 'Directorio Voluntarios')">
+              <i class="fa-solid fa-users-gear me-1"></i> Mostrar Voluntarios
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div id="wrapperColapsableVoluntarios" class="animate__animated animate__fadeIn d-none mb-4">
+        <div class="card shadow-sm border-0 mb-3 bg-dark text-white">
+          <div class="card-body py-2">
+            <span class="fw-bold"><i class="fa-solid fa-users-viewfinder me-2 text-warning"></i> Directorio y Validación de Personal</span>
+          </div>
+        </div>
+        
+        <div class="card shadow-sm border-0 mb-3 bg-white">
+          <div class="card-body p-3">
+            <div class="row g-2 align-items-center">
+              <div class="col-12 col-md-6">
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-light"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                  <input type="text" id="txtBusquedaVoluntario" class="form-control bg-light" 
+                         placeholder="Filtrar por nombre, cédula o especialidad técnica..." onkeyup="ejecutarFiltroAgendaLocal()">
+                </div>
+              </div>
+              <div class="col-12 col-md-6 d-flex justify-content-md-end gap-3">
+                <div class="form-check form-switch small">
+                  <input class="form-check-input" type="checkbox" id="switchVerificados" checked onchange="ejecutarFiltroAgendaLocal()">
+                  <label class="form-check-label text-secondary fw-semibold" for="switchVerificados">Verificados</label>
+                </div>
+                <div class="form-check form-switch small">
+                  <input class="form-check-input" type="checkbox" id="switchPendientes" checked onchange="ejecutarFiltroAgendaLocal()">
+                  <label class="form-check-label text-secondary fw-semibold" for="switchPendientes">Por Verificar</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-2" id="contenedorAgendaVoluntarios">
+          <div class="col-12 text-center p-4">
+            <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            <p class="small text-muted mt-1">Sincronizando plantilla de personal...</p>
+          </div>
+        </div>
+      </div>
+
+      <div id="wrapperColapsableCalendario" class="animate__animated animate__fadeIn mb-4">
+        <div class="card shadow-sm border-0 mb-3 bg-success text-white">
+          <div class="card-body py-2 d-flex justify-content-between align-items-center">
+            <span class="fw-bold"><i class="fa-solid fa-calendar-days me-2"></i> Calendario de Guardias y Relevos Disponibles</span>
+            <span class="badge bg-white text-success font-monospace" id="lblAccesoCalendario">Acceso Concedido</span>
+          </div>
+        </div>
+        <div id="calendarioContainer"></div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+
+<!-- NUEVO: Panel Lateral Desplegable (Offcanvas) para la Ficha -->
+<div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" id="modalDetalleVoluntario" style="z-index: 1070; width: 380px;">
+  <div class="offcanvas-header bg-custom-brand text-white border-bottom shadow-sm">
+    <h5 class="offcanvas-title mb-0"><i class="fa-solid fa-address-card me-2"></i>Ficha de Personal</h5>
+    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+  </div>
+  <div class="offcanvas-body text-center custom-scroll-list" id="modalDetalleBody">
+    <!-- El contenido se inyectará dinámicamente con JS -->
+  </div>
+</div>
+
+<!-- NUEVO: Modal Elegante para Cerrar Sesión -->
+<div class="modal fade" id="modalConfirmarLogout" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-body text-center p-4">
+        <div class="text-danger mb-3">
+          <i class="fa-solid fa-right-from-bracket fa-3x animate__animated animate__pulse"></i>
+        </div>
+        <h5 class="fw-bold text-dark">¿Cerrar Sesión?</h5>
+        <p class="text-muted small mb-4">Está a punto de salir de su cuenta operativa. Deberá solicitar un nuevo código de acceso para volver a entrar.</p>
+        
+        <div class="d-flex justify-content-center gap-2">
+          <button type="button" class="btn btn-light border w-50" data-bs-dismiss="modal">Cancelar</button>
+          <button type="button" class="btn btn-danger w-50 shadow-sm" onclick="ejecutarCierreSesion()">Sí, salir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NUEVO: Modal de Estatus Global (Bloqueo de pantalla y Feedback) -->
+<div class="modal fade" id="modalEstatusPerfil" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-sm">
+    <div class="modal-content border-0 shadow-lg">
+      <div class="modal-body text-center p-5" id="cuerpoEstatusPerfil">
+        <!-- El contenido cambia dinámicamente -->
+        <div id="loadingState">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-dark">Sincronizando...</h5>
+            <p class="text-muted small mb-0">Subiendo archivos a la Red Operativa de Drive.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+  
+  let cacheFotoPerfilB64 = { base64: null, nombre: null, cargando: false };
+  let cacheDocumentacionB64 = { base64: null, nombre: null, cargando: false };
+  let poolVoluntarios = []; 
+
+  /**
+   * Inicializador modular expuesto de forma global.
+   */
+  window.inicializarPerfilModulo = function() {
+      if (typeof refrescarSesionLocal === "function") refrescarSesionLocal();
+
+      const cuentaActiva = window.sesionUsuario || JSON.parse(sessionStorage.getItem('userProfile'));
+      if (!cuentaActiva) {
+          console.error("Error crítico: No se encontraron credenciales válidas en la sesión.");
+          return;
+      }
+
+      // 2. Inyección atómica en campos de texto
+      document.getElementById('perfilNombre').value = cuentaActiva.nombre || "";
+      document.getElementById('perfilVoluntariado').value = cuentaActiva.voluntariado || "";
+      document.getElementById('perfilEspecialidad').value = cuentaActiva.especialidad || "";
+      document.getElementById('perfilTelefono').value = cuentaActiva.telefono || "";
+      document.getElementById('perfilCedula').value = cuentaActiva.cedula || "";
+      document.getElementById('perfilUrlFotoActual').value = cuentaActiva.imagen_profile || cuentaActiva.imagenProfile || "";
+      document.getElementById('perfilUrlDocActual').value = cuentaActiva.Documentacion_URL || cuentaActiva.docUrl || "";
+      document.getElementById('perfilDireccion').value = cuentaActiva.direccion || "";
+
+      // 3. RESOLUCIÓN DE LA SELFIE MEDIANTE BASE64 (BACKEND)
+      const urlFotoDrive = cuentaActiva.imagen_profile || cuentaActiva.imagenProfile;
+      const avatarImg = document.getElementById('avatarPrevisualizacion');
+      
+      if (avatarImg && urlFotoDrive && urlFotoDrive.trim() !== "") {
+          // Mientras carga del servidor, mostramos un indicador visual
+          avatarImg.src = "https://ui-avatars.com/api/?name=...&background=e2e8f0&color=94a3b8&size=130";
+          
+          google.script.run
+            .withSuccessHandler(base64Str => {
+                if (base64Str) {
+                    avatarImg.src = base64Str;
+                } else {
+                    avatarImg.src = "https://placehold.co/130x130/f1f5f9/1e3a8a?text=SELFIE";
+                }
+            })
+            .withFailureHandler(() => {
+                avatarImg.src = "https://ui-avatars.com/api/?name=X&background=f8d7da&color=842029&size=130";
+            })
+            .obtenerImagenBase64(urlFotoDrive);
+      } else if (avatarImg) {
+          avatarImg.src = "https://placehold.co/130x130/f1f5f9/1e3a8a?text=SELFIE";
+      }
+
+      // Despliegue de credenciales documentales
+      const urlDocExistente = cuentaActiva.Documentacion_URL || cuentaActiva.docUrl;
+      if (urlDocExistente && urlDocExistente.trim() !== "") {
+          document.getElementById('contenedorDocExistente').classList.remove('d-none');
+          document.getElementById('linkDocExistente').href = urlDocExistente;
+      }
+
+      // Catálogo maestro de especialidades
+      google.script.run
+        .withSuccessHandler(lista => {
+            const datalist = document.getElementById('listaEspecialidades');
+            if (!datalist) return;
+            datalist.innerHTML = '';
+            lista.forEach(esp => {
+                const option = document.createElement('option');
+                option.value = esp;
+                datalist.appendChild(option);
+            });
+        }).obtenerEspecialidadesUnicasMaestro();
+
+      // Selector dinámico de puntos de recogida
+      // --- CORRECCIÓN DEL SELECTOR DE PUNTOS DE RECOGIDA ---
+      google.script.run
+        .withSuccessHandler(lugares => {
+            const selectRecogida = document.getElementById('perfilRecogida');
+            if (!selectRecogida) return;
+            
+            selectRecogida.innerHTML = ''; 
+            
+            // puntoDefinido puede ser un ID (D001) o un Nombre (si es un registro viejo)
+            const puntoDefinido = cuentaActiva.puntoRecogida || "";
+            
+            lugares.forEach((lugar, indice) => {
+                const option = document.createElement('option');
+                // IMPORTANTE:
+                option.value = lugar.id;     // Guardamos el ID (P001, D001...)
+                option.innerText = lugar.nombre; // Mostramos el Nombre al usuario
+                
+                // Lógica de pre-selección inteligente
+                if (puntoDefinido === lugar.id || puntoDefinido === lugar.nombre) {
+                    option.selected = true;
+                } else if (indice === 0 && puntoDefinido === "") {
+                    option.selected = true;
+                }
+                
+                selectRecogida.appendChild(option);
+            });
+        })
+        .withFailureHandler(err => {
+            document.getElementById('perfilRecogida').innerHTML = `
+                <option value="Estación">Estación / Base de Salida</option>
+            `;
+        })
+        .obtenerPuntosRecogidaMaestro();
+        
+      // Control de permisos, roles y bloqueos en cascada
+      const lblEstatus = document.getElementById('lblEstatusVerificacion');
+      const seccionCalendario = document.getElementById('seccionCalendarioDesplegable');
+      const contenedorBloqueo = document.getElementById('contenedorBloqueo');
+      const msgBloqueo = contenedorBloqueo.querySelector('span.small');
+
+      // Lógica de cascada de permisos
+      if (cuentaActiva.esCoordinador || cuentaActiva.coordinador === true) {
+          // Coordinador siempre tiene acceso
+          lblEstatus.className = "badge bg-danger";
+          lblEstatus.innerHTML = '<i class="fa-solid fa-user-shield me-1"></i> Autoridad / Coordinador';
+          seccionCalendario.classList.remove('d-none');
+          contenedorBloqueo.classList.add('d-none'); // Por si acaso
+          document.getElementById('panelAccionesCoordinador').classList.remove('d-none');
+          ejecutarInyeccionCalendario();
+          cargarPoolVoluntariosAsincrono(); 
+      } 
+      else if (cuentaActiva.banned === true) {
+          // PRIORIDAD: Si está baneado, bloqueamos sin importar lo demás (Punto 2)
+          lblEstatus.className = "badge bg-dark";
+          lblEstatus.innerHTML = '<i class="fa-solid fa-ban me-1"></i> Perfil Restringido';
+          msgBloqueo.innerText = "Su perfil está siendo verificado por la coordinación central. El acceso se restaurará al finalizar el proceso.";
+          contenedorBloqueo.classList.remove('d-none');
+          seccionCalendario.classList.add('d-none');
+      } 
+      else if (cuentaActiva.verificado) {
+          // Usuario normal verificado
+          lblEstatus.className = "badge bg-success";
+          lblEstatus.innerHTML = '<i class="fa-solid fa-circle-check me-1"></i> Verificado';
+          seccionCalendario.classList.remove('d-none');
+          contenedorBloqueo.classList.add('d-none');
+          ejecutarInyeccionCalendario();
+      } 
+      else {
+          // Usuario no verificado o con datos faltantes (Punto 4 del backend actuará aquí)
+          lblEstatus.className = "badge bg-warning text-dark";
+          lblEstatus.innerHTML = '<i class="fa-solid fa-clock me-1"></i> En Revisión';
+          msgBloqueo.innerText = "El acceso al calendario se activará automáticamente cuando complete su perfil y la coordinación valide sus credenciales.";
+          contenedorBloqueo.classList.remove('d-none');
+          seccionCalendario.classList.add('d-none');
+      }
+
+      function ejecutarInyeccionCalendario() {
+          setTimeout(() => {
+              const calendarioDestino = document.getElementById('calendarioContainer');
+              const calendarioTemplate = document.getElementById('template-calendario-view'); 
+              if (calendarioDestino && calendarioTemplate) {
+                  calendarioDestino.innerHTML = '';
+                  calendarioDestino.appendChild(calendarioTemplate.content.cloneNode(true));
+                  const scripts = calendarioDestino.querySelectorAll('script');
+                  scripts.forEach(script => {
+                      const nuevoScript = document.createElement('script');
+                      nuevoScript.text = script.text;
+                      script.parentNode.replaceChild(nuevoScript, script);
+                  });
+              }
+          }, 100);
+      }
+  };
+
+  // Forzar ejecución inmediata local por compatibilidad de compilación
+  setTimeout(function() {
+      if (typeof window.inicializarPerfilModulo === "function") window.inicializarPerfilModulo();
+  }, 50);
+
+  function toggleVisibilidadSeccion(idWrapper, btn, nombreSeccion) {
+    const wrapper = document.getElementById(idWrapper);
+    if (!wrapper) return;
+
+    if (wrapper.classList.contains('d-none')) {
+      wrapper.classList.remove('d-none');
+      btn.innerHTML = `<i class="fa-solid fa-eye-slash me-1"></i> Ocultar ${nombreSeccion}`;
+      if (idWrapper === 'wrapperColapsableCalendario') btn.className = "btn btn-sm btn-dark w-100 py-2 fw-bold shadow-sm";
+      if (idWrapper === 'wrapperColapsableVoluntarios') btn.className = "btn btn-sm btn-primary w-100 py-2 fw-bold shadow-sm";
+    } else {
+      wrapper.classList.add('d-none');
+      btn.innerHTML = `<i class="fa-solid fa-eye me-1"></i> Mostrar ${nombreSeccion}`;
+      btn.className = "btn btn-sm btn-outline-secondary w-100 py-2 fw-bold shadow-sm";
+    }
+  }
+
+  function cargarPoolVoluntariosAsincrono() {
+    google.script.run
+      .withSuccessHandler(lista => {
+        poolVoluntarios = lista;
+        renderizarTarjetasAgendaLocal(poolVoluntarios);
+      }).obtenerTodosLosVoluntarios();
+  }
+
+  function renderizarTarjetasAgendaLocal(lista) {
+      const contenedor = document.getElementById('contenedorAgendaVoluntarios');
+      if (!contenedor) return;
+      contenedor.innerHTML = '';
+
+      if (lista.length === 0) {
+        contenedor.innerHTML = '<div class="col-12 text-center text-muted small py-3">No hay registros bajo los criterios establecidos.</div>';
+        return;
+      }
+
+      lista.forEach(vol => {
+        const avatarSrc = "https://ui-avatars.com/api/?name=" + (vol.nombre ? vol.nombre.charAt(0) : "V") + "&background=f1f5f9&color=1e3a8a";
+        const statusBadge = vol.verificado 
+          ? `<span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill" style="font-size:0.65rem;">Verificado</span>`
+          : `<span class="badge bg-warning-subtle text-warning border border-warning-subtle rounded-pill" style="font-size:0.65rem;">Pendiente</span>`;
+
+        const colCard = document.createElement('div');
+        colCard.className = "col-12 col-sm-6 col-lg-4 animate__animated animate__fadeIn";
+        colCard.innerHTML = `
+          <!-- Agregamos cursor pointer y el onclick para abrir el modal -->
+          <div class="card border-0 shadow-sm bg-white h-100" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='translateY(0)'" onclick="abrirFichaVoluntario('${vol.id}')">
+            
+            <div class="card-body p-2 d-flex flex-column justify-content-between">
+              <div class="d-flex align-items-center gap-2">
+                <!-- Usamos la foto real de Drive si existe, sino el avatar -->
+                <img src="${(vol.imagen_profile && vol.imagen_profile !== '') ? vol.imagen_profile : avatarSrc}" class="rounded-circle border border-2 border-light shadow-sm" style="width:45px; height:45px; object-fit:cover; flex-shrink:0;" onerror="this.src='${avatarSrc}'">
+                <div style="min-width:0;">
+                  <div class="fw-bold ${vol.banned ? 'text-danger' : 'text-dark'} text-truncate small" style="font-size:0.8rem;">
+                      ${vol.banned ? '<i class="fa-solid fa-user-slash me-1"></i>' : ''}${vol.nombre || 'Sin Nombre'}
+                  </div>
+                  <div class="text-muted font-monospace" style="font-size:0.65rem;">${vol.cedula || 'N/D'} | <span class="text-primary fw-semibold">${vol.especialidad || 'N/D'}</span></div>
+                  <div class="text-muted text-truncate" style="font-size:0.65rem;"><i class="fa-solid fa-location-dot me-1"></i>${vol.direccion || 'Sin dirección'}</div>
+                </div>
+              </div>
+              
+              <!-- ATENCIÓN: Agregamos onclick="event.stopPropagation()" para que al tocar los botones no se abra la ficha por accidente -->
+              <div class="border-top pt-1 mt-2" onclick="event.stopPropagation();">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <div>${statusBadge}</div>
+                  <div class="form-check form-switch m-0 small">
+                    <input class="form-check-input" type="checkbox" id="switchV-${vol.id}" ${vol.verificado ? 'checked' : ''} onchange="actualizarVerificacionEnLínea('${vol.id}', this)">
+                    <label class="form-check-label text-muted" style="font-size:0.65rem;" for="switchV-${vol.id}">Validar</label>
+                  </div>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center p-1 rounded ${vol.banned ? 'bg-danger-subtle' : 'bg-light'}">
+                  <span class="fw-bold" style="font-size:0.6rem; color:${vol.banned ? '#dc3545' : '#6c757d'};">Acceso</span>
+                  <div class="form-check form-switch m-0 small">
+                    <input class="form-check-input" type="checkbox" id="switchB-${vol.id}" ${vol.banned ? 'checked' : ''} onchange="actualizarBaneoEnLínea('${vol.id}', this)">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+        contenedor.appendChild(colCard);
+      });
+  }
+
+  // NUEVA FUNCIÓN PARA PERFIL.HTML: Conecta con el servidor para banear
+  function actualizarBaneoEnLínea(idVoluntario, toggle) {
+      const esBaneado = toggle.checked;
+      toggle.disabled = true;
+
+      google.script.run
+        .withSuccessHandler(res => {
+          toggle.disabled = false;
+          if (res && res.status === "SUCCESS") {
+            const idx = poolVoluntarios.findIndex(v => v.id === idVoluntario);
+            if (idx !== -1) poolVoluntarios[idx].banned = esBaneado;
+            
+            ejecutarFiltroAgendaLocal(); // Actualiza la tarjeta de fondo
+
+            // Actualiza visualmente el modal si está abierto
+            const modalBoxB = document.getElementById('modalBoxB');
+            const modalTextoBaneo = document.getElementById('modalTextoBaneo');
+            if (modalBoxB) modalBoxB.className = `p-2 border rounded ${esBaneado ? 'bg-danger-subtle' : 'bg-light'} d-flex justify-content-between align-items-center`;
+            if (modalTextoBaneo) {
+                modalTextoBaneo.className = `small fw-bold ${esBaneado ? 'text-danger' : 'text-dark'}`;
+                modalTextoBaneo.innerText = esBaneado ? "Bloqueado" : "Bloquear";
+            }
+
+          } else {
+            alert("Error: " + res.message);
+            toggle.checked = !toggle.checked;
+          }
+        })
+        .withFailureHandler(err => {
+          toggle.disabled = false;
+          toggle.checked = !toggle.checked;
+          alert("Fallo de red.");
+        }).cambiarEstatusBaneo(idVoluntario, esBaneado);
+  }
+
+  function ejecutarFiltroAgendaLocal() {
+      const query = document.getElementById('txtBusquedaVoluntario').value.toLowerCase().trim();
+      const verif = document.getElementById('switchVerificados').checked;
+      const pend = document.getElementById('switchPendientes').checked;
+
+      const filtrados = poolVoluntarios.filter(v => {
+        if (v.verificado && !verif) return false;
+        if (!v.verificado && !pend) return false;
+        if (query === "") return true;
+
+        // Ahora incluimos la dirección en la búsqueda local
+        return v.nombre.toLowerCase().includes(query) || 
+              v.cedula.toLowerCase().includes(query) || 
+              v.especialidad.toLowerCase().includes(query) ||
+              (v.direccion || "").toLowerCase().includes(query);
+      });
+      renderizarTarjetasAgendaLocal(filtrados);
+  }
+
+  function actualizarVerificacionEnLínea(idVoluntario, toggle) {
+    const nuevoStatus = toggle.checked ? "Verificado" : "No Verificado";
+    toggle.disabled = true;
+
+    google.script.run
+      .withSuccessHandler(res => {
+        toggle.disabled = false;
+        if (res && res.status === "SUCCESS") {
+          const idx = poolVoluntarios.findIndex(v => v.id === idVoluntario);
+          if (idx !== -1) poolVoluntarios[idx].verificado = toggle.checked;
+          
+          ejecutarFiltroAgendaLocal(); // Actualiza la tarjeta de fondo
+
+          // Actualiza visualmente el modal si está abierto
+          const modalTexto = document.getElementById('modalTextoStatus');
+          const modalIcono = document.getElementById('modalIconoStatus');
+          const modalBoxV = document.getElementById('modalBoxV');
+          const imgFicha = document.getElementById(`imgFicha_${idVoluntario}`);
+          
+          if (modalTexto) modalTexto.innerHTML = toggle.checked ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verificado</span>' : '<span class="text-warning"><i class="fa-solid fa-clock"></i> Pendiente</span>';
+          if (modalIcono) modalIcono.innerHTML = toggle.checked ? '<i class="fa-solid fa-check text-success"></i>' : '<i class="fa-solid fa-hourglass-half text-warning"></i>';
+          if (modalBoxV) modalBoxV.className = `p-2 border rounded ${toggle.checked ? 'bg-success-subtle' : 'bg-light'} d-flex justify-content-between align-items-center`;
+          if (imgFicha) imgFicha.className = `rounded-circle border border-3 ${toggle.checked ? 'border-success' : 'border-warning'} shadow-sm`;
+
+        } else {
+          alert("Error de persistencia: " + res.message);
+          toggle.checked = !toggle.checked;
+        }
+      })
+      .withFailureHandler(err => {
+        toggle.disabled = false;
+        toggle.checked = !toggle.checked;
+        alert("Fallo crítico en el hilo de red.");
+      }).cambiarEstatusVerificacion(idVoluntario, nuevoStatus);
+  }
+
+  function procesarPrevisualizacionFoto(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      cacheFotoPerfilB64.cargando = true;
+      reader.onload = function(e) {
+        document.getElementById('avatarPrevisualizacion').src = e.target.result;
+        cacheFotoPerfilB64.base64 = e.target.result;
+        cacheFotoPerfilB64.nombre = file.name;
+        cacheFotoPerfilB64.cargando = false;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function procesarDocumentoLocal(input) {
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      const reader = new FileReader();
+      cacheDocumentacionB64.cargando = true;
+      reader.onload = function(e) {
+        cacheDocumentacionB64.base64 = e.target.result;
+        cacheDocumentacionB64.nombre = file.name;
+        cacheDocumentacionB64.cargando = false;
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function actualizarPerfil(event) {
+    event.preventDefault();
+    const formElement = document.getElementById('formPerfil');
+    const btnSave = document.getElementById('btnGuardarPerfil');
+    
+    // 1. Iniciamos el modal de bloqueo
+    const modalEl = document.getElementById('modalEstatusPerfil');
+    const modalStatus = bootstrap.Modal.getOrCreateInstance(modalEl);
+    const cuerpo = document.getElementById('cuerpoEstatusPerfil');
+    
+    // Resetear a estado de carga inicial
+    cuerpo.innerHTML = `
+        <div class="animate__animated animate__fadeIn">
+            <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status"></div>
+            <h5 class="fw-bold text-dark">Sincronizando Datos...</h5>
+            <p class="text-muted small mb-0">Procesando Selfie y Documentación en Drive. Por favor, no cierre la ventana.</p>
+        </div>`;
+    modalStatus.show();
+
+    if (cacheFotoPerfilB64.cargando || cacheDocumentacionB64.cargando) {
+      cuerpo.innerHTML = `<div class="text-warning"><i class="fa-solid fa-clock fa-3x mb-3"></i><h5>Espere un momento</h5><p class="small">Los archivos aún se están procesando localmente.</p><button class="btn btn-sm btn-secondary w-100" data-bs-dismiss="modal">Entendido</button></div>`;
+      return;
+    }
+    
+    formElement.classList.add('was-validated');
+    if (!formElement.checkValidity()) {
+        modalStatus.hide();
+        return;
+    }
+
+    const urlFotoActual = document.getElementById('perfilUrlFotoActual').value;
+    if (!cacheFotoPerfilB64.base64 && (!urlFotoActual || urlFotoActual.trim() === "")) {
+      cuerpo.innerHTML = `<div class="text-danger"><i class="fa-solid fa-camera-retro fa-3x mb-3"></i><h5>Selfie Obligatoria</h5><p class="small">Debe capturar su foto para continuar.</p><button class="btn btn-sm btn-danger w-100" data-bs-dismiss="modal">Capturar ahora</button></div>`;
+      return;
+    }
+
+    const cuentaActiva = window.sesionUsuario || JSON.parse(sessionStorage.getItem('userProfile'));
+    const base64Subido = cacheFotoPerfilB64.base64; 
+
+    const datos = {
+        ID_Voluntario: cuentaActiva.id || cuentaActiva.ID_Voluntario || "",
+        cedula: document.getElementById('perfilCedula').value.trim(),
+        Nombre_Completo: document.getElementById('perfilNombre').value.trim(),
+        Voluntariado: document.getElementById('perfilVoluntariado').value,
+        Especialidad: document.getElementById('perfilEspecialidad').value.trim(), 
+        Punto_Recogida_Preferido: document.getElementById('perfilRecogida').value,
+        Telefono: document.getElementById('perfilTelefono').value.trim(),
+        direccion: document.getElementById('perfilDireccion').value.trim(),
+        Correo: cuentaActiva.email || cuentaActiva.Correo || "",
+        imagen_profile_actual: urlFotoActual,
+        Documentacion_URL_actual: document.getElementById('perfilUrlDocActual').value,
+        imagen_profile_base64: cacheFotoPerfilB64.base64,
+        imagen_profile_nombre: cacheFotoPerfilB64.nombre,
+        Documentacion_base64: cacheDocumentacionB64.base64,
+        Documentacion_nombre: cacheDocumentacionB64.nombre
+    };
+
+    google.script.run
+        .withSuccessHandler(res => {
+            if (res && res.status === "SUCCESS") {
+                // Sincronización de memoria
+                sessionStorage.setItem('userProfile', JSON.stringify(res.perfil));
+                window.sesionUsuario = res.perfil;
+                if (typeof refrescarSesionLocal === "function") refrescarSesionLocal();
+                
+                // Limpieza de inputs
+                cacheFotoPerfilB64 = { base64: null, nombre: null, cargando: false };
+                cacheDocumentacionB64 = { base64: null, nombre: null, cargando: false };
+                document.getElementById('perfilUrlFotoActual').value = res.perfil.imagen_profile || "";
+                document.getElementById('perfilUrlDocActual').value = res.perfil.Documentacion_URL || "";
+                
+                if (base64Subido) document.getElementById('avatarPrevisualizacion').src = base64Subido;
+                if (typeof window.inicializarPerfilModulo === "function") window.inicializarPerfilModulo();
+                if (typeof cargarDatos === "function") cargarDatos();
+
+                // --- PANTALLA DE ÉXITO ELEGANTE ---
+                cuerpo.innerHTML = `
+                    <div class="animate__animated animate__zoomIn">
+                        <i class="fa-solid fa-circle-check text-success fa-4x mb-3"></i>
+                        <h5 class="fw-bold text-dark">¡Perfil Actualizado!</h5>
+                        <p class="text-muted small mb-0">Tus datos han sido respaldados con éxito en la nube.</p>
+                    </div>`;
+                
+                // Cerramos automáticamente después de 2 segundos
+                setTimeout(() => { modalStatus.hide(); }, 2000);
+
+            } else {
+                // --- PANTALLA DE ERROR ELEGANTE ---
+                cuerpo.innerHTML = `
+                    <div class="animate__animated animate__shakeX">
+                        <i class="fa-solid fa-triangle-exclamation text-danger fa-4x mb-3"></i>
+                        <h5 class="fw-bold text-dark">Fallo en Servidor</h5>
+                        <p class="text-muted small mb-3">${res ? res.message : 'Error de respuesta'}</p>
+                        <button class="btn btn-sm btn-danger w-100 shadow-sm" data-bs-dismiss="modal">Reintentar</button>
+                    </div>`;
+            }
+        })
+        .withFailureHandler(err => {
+            cuerpo.innerHTML = `
+                <div class="text-danger animate__animated animate__headShake">
+                    <i class="fa-solid fa-wifi fa-4x mb-3"></i>
+                    <h5 class="fw-bold">Error de Red</h5>
+                    <p class="text-muted small mb-3">La conexión con el Maestro de Datos fue interrumpida.</p>
+                    <button class="btn btn-sm btn-danger w-100 shadow-sm" data-bs-dismiss="modal">Entendido</button>
+                </div>`;
+        }).registrarOActualizarVoluntario(datos); 
+  }
+
+  /**
+   * Dispara el modal visual de confirmación en lugar de la alerta nativa
+   */
+  function cerrarSesionApp() {
+      const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalConfirmarLogout'));
+      modal.show();
+  }
+
+  /**
+   * Ejecuta la limpieza de memoria y redirige a la pantalla de login
+   */
+  function ejecutarCierreSesion() {
+      // 1. Ocultamos el modal con su animación correspondiente
+      const modal = bootstrap.Modal.getInstance(document.getElementById('modalConfirmarLogout'));
+      if (modal) modal.hide();
+
+      // 2. Limpiamos las credenciales locales
+      sessionStorage.clear();
+      window.sesionUsuario = null;
+
+      // 3. Redirigimos a la pantalla de Auth (con un pequeño retraso para que el modal termine de cerrarse visualmente)
+      setTimeout(() => {
+          cargarVista('auth');
+      }, 300);
+  }
+
+  /**
+   * Abre el modal detallado mostrando la información completa del voluntario
+   */
+  /**
+   * Abre el modal detallado mostrando la información completa del voluntario
+   * Carga imagen en Base64 y añade controles operativos en vivo
+   */
+  function abrirFichaVoluntario(idVoluntario) {
+      const vol = poolVoluntarios.find(v => v.id === idVoluntario);
+      if (!vol) return;
+
+      const body = document.getElementById('modalDetalleBody');
+      
+      // Placeholder inicial (mientras carga Base64 de Drive)
+      const avatarFallback = "https://ui-avatars.com/api/?name=" + (vol.nombre ? vol.nombre.charAt(0) : "V") + "&background=f1f5f9&color=1e3a8a&size=120";
+      
+      const docLink = (vol.docUrl && vol.docUrl.trim() !== "") 
+        ? `<a href="${vol.docUrl}" target="_blank" class="btn btn-sm btn-outline-primary mt-3 w-100"><i class="fa-solid fa-file-pdf me-2"></i>Ver Credencial Adjunta</a>` 
+        : `<div class="alert alert-secondary py-1 mt-3 small mb-0"><i class="fa-solid fa-file-circle-xmark me-1"></i> No posee documento anexo</div>`;
+
+      const estatusStr = vol.verificado ? '<span class="text-success"><i class="fa-solid fa-circle-check"></i> Verificado</span>' : '<span class="text-warning"><i class="fa-solid fa-clock"></i> Pendiente</span>';
+
+      // Estructura del modal
+      body.innerHTML = `
+          <div class="position-relative d-inline-block mb-3 mt-2">
+            <!-- Spinner que se mostrará mientras carga la imagen -->
+            <div id="spinnerFicha_${vol.id}" class="position-absolute top-50 start-50 translate-middle" style="z-index: 5; ${!vol.imagen_profile ? 'display:none;' : ''}">
+              <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+            </div>
+            
+            <img id="imgFicha_${vol.id}" src="${avatarFallback}" class="rounded-circle border border-3 ${vol.verificado ? 'border-success' : 'border-warning'} shadow-sm" style="width: 110px; height: 110px; object-fit: cover; opacity: ${vol.imagen_profile ? '0.5' : '1'}; transition: opacity 0.3s;">
+            
+            <span id="modalIconoStatus" class="position-absolute bottom-0 end-0 p-1 bg-white border border-light rounded-circle shadow-sm" title="Estatus">
+                ${vol.verificado ? '<i class="fa-solid fa-check text-success"></i>' : '<i class="fa-solid fa-hourglass-half text-warning"></i>'}
+            </span>
+          </div>
+          
+          <h5 class="fw-bold text-dark mb-0">${vol.nombre || 'Sin Nombre'}</h5>
+          <p class="text-muted font-monospace mb-2 small">${vol.cedula || 'N/D'}</p>
+          <div class="badge bg-primary px-3 py-2 mb-3 shadow-sm" style="font-size:0.85rem;">
+             ${vol.especialidad || 'Sin Especialidad'} <small class="fw-normal">(${vol.voluntariado || 'General'})</small>
+          </div>
+
+          <ul class="list-group list-group-flush text-start small border rounded">
+              <li class="list-group-item py-2"><i class="fa-solid fa-phone text-secondary me-2 w-15px"></i> <strong>Teléfono:</strong> ${vol.telefono || 'N/D'}</li>
+              <li class="list-group-item py-2"><i class="fa-solid fa-envelope text-secondary me-2 w-15px"></i> <strong>Correo:</strong> ${vol.email || 'N/D'}</li>
+              <li class="list-group-item py-2"><i class="fa-solid fa-location-dot text-secondary me-2 w-15px"></i> <strong>Dirección:</strong> ${vol.direccion || 'N/D'}</li>
+              <li class="list-group-item py-2"><i class="fa-solid fa-map-pin text-secondary me-2 w-15px"></i> <strong>Recogida:</strong> ${vol.puntoRecogida || 'N/D'}</li>
+              <li class="list-group-item py-2 bg-light"><i class="fa-solid fa-shield-halved text-secondary me-2 w-15px"></i> <strong>Estatus:</strong> <span id="modalTextoStatus">${estatusStr}</span></li>
+          </ul>
+          
+          <!-- Controles de Validación y Baneo en el Modal -->
+          <div class="row g-2 mt-3">
+            <div class="col-6">
+               <div id="modalBoxV" class="p-2 border rounded ${vol.verificado ? 'bg-success-subtle' : 'bg-light'} d-flex justify-content-between align-items-center">
+                  <span class="small fw-bold text-dark">Verificar</span>
+                  <div class="form-check form-switch m-0">
+                     <input class="form-check-input" type="checkbox" ${vol.verificado ? 'checked' : ''} onchange="actualizarVerificacionEnLínea('${vol.id}', this)">
+                  </div>
+               </div>
+            </div>
+            <div class="col-6">
+               <div id="modalBoxB" class="p-2 border rounded ${vol.banned ? 'bg-danger-subtle' : 'bg-light'} d-flex justify-content-between align-items-center">
+                  <span id="modalTextoBaneo" class="small fw-bold ${vol.banned ? 'text-danger' : 'text-dark'}">Bloquear</span>
+                  <div class="form-check form-switch m-0">
+                     <input class="form-check-input" type="checkbox" ${vol.banned ? 'checked' : ''} onchange="actualizarBaneoEnLínea('${vol.id}', this)">
+                  </div>
+               </div>
+            </div>
+          </div>
+
+          ${docLink}
+      `;
+
+      // Mostramos el modal
+      const panelLateral = bootstrap.Offcanvas.getOrCreateInstance(document.getElementById('modalDetalleVoluntario'));
+      panelLateral.show();
+
+      // Carga asíncrona de la imagen en Base64 para evitar el Hotlinking/Broken image
+      if (vol.imagen_profile && vol.imagen_profile.trim() !== "") {
+          google.script.run
+            .withSuccessHandler(base64Str => {
+                const imgElem = document.getElementById(`imgFicha_${vol.id}`);
+                const spinner = document.getElementById(`spinnerFicha_${vol.id}`);
+                if (imgElem && base64Str) {
+                    imgElem.src = base64Str;
+                    imgElem.style.opacity = '1';
+                } else if (imgElem) {
+                    imgElem.style.opacity = '1'; 
+                }
+                if (spinner) spinner.style.display = 'none';
+            })
+            .withFailureHandler(() => {
+                const imgElem = document.getElementById(`imgFicha_${vol.id}`);
+                const spinner = document.getElementById(`spinnerFicha_${vol.id}`);
+                if (imgElem) imgElem.style.opacity = '1';
+                if (spinner) spinner.style.display = 'none';
+            })
+            .obtenerImagenBase64(vol.imagen_profile);
+      }
+  }
+</script>
