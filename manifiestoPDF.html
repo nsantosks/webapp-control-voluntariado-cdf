@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>MANIFIESTO OPERATIVO - CADENA DE FAVORES VZLA</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Estilos de Alta Fidelidad Corporativa - Enfoque Ejecutivo Denso */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    /* Configuración de Impresión Limpia sin Encabezados/Pies Nativos del Navegador */
+    @page { 
+      size: auto; 
+      margin: 10mm 15mm 10mm 15mm; 
+    }
+    
+    body { 
+      font-family: 'Inter', Arial, sans-serif; 
+      padding: 0; 
+      color: #1e293b; 
+      background: #fff; 
+      line-height: 1.3; 
+      margin: 0; 
+    }
+    
+    /* Membrete Institucional Compacto (Optimización de Espacio Vertical) */
+    .header-container { 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      border-bottom: 2px solid #1e3a8a; 
+      padding-bottom: 8px; 
+      margin-bottom: 15px; 
+    }
+    .logo-area img { 
+      width: 55px; 
+      height: 55px; 
+      object-fit: contain; 
+    }
+    .header-text-area { 
+      text-align: right; 
+    }
+    .institution-title { 
+      font-size: 1.15rem; 
+      font-weight: 700; 
+      color: #1e3a8a; 
+      letter-spacing: -0.2px; 
+      margin: 0; 
+    }
+    .document-type { 
+      font-size: 0.8rem; 
+      font-weight: 700; 
+      color: #0f172a; 
+      text-transform: uppercase; 
+      margin-top: 2px; 
+      letter-spacing: 0.5px; 
+    }
+
+    /* Bloque Metadatos Logísticos Reducido */
+    .meta-grid { 
+      display: grid; 
+      grid-template-columns: repeat(2, 1fr); 
+      gap: 12px; 
+      margin-bottom: 20px; 
+    }
+    .meta-card { 
+      background: #f8fafc; 
+      border: 1px solid #e2e8f0; 
+      border-radius: 6px; 
+      padding: 10px 14px; 
+      border-left: 4px solid #1e3a8a; 
+    }
+    .meta-card-title { 
+      font-size: 0.7rem; 
+      font-weight: 700; 
+      color: #64748b; 
+      text-transform: uppercase; 
+      margin-bottom: 3px; 
+      tracking: 0.5px; 
+    }
+    .meta-card-value { 
+      font-size: 0.85rem; 
+      font-weight: 600; color: #0f172a; 
+    }
+    .meta-card-value span { 
+      font-weight: 400; 
+      color: #475569; 
+    }
+
+    /* Sección de la Tabla Compacta */
+    .section-title { 
+      color: #0f172a; 
+      font-size: 0.95rem; 
+      font-weight: 700; 
+      margin-bottom: 10px; 
+      display: flex; 
+      align-items: center; 
+      gap: 6px; 
+      border-bottom: 1px solid #e2e8f0; 
+      padding-bottom: 5px; 
+    }
+    .manifest-table { 
+      width: 100%; 
+      border-collapse: collapse; 
+      margin-top: 5px; 
+    }
+    .manifest-table th { 
+      background: #1e3a8a; 
+      color: white; 
+      padding: 8px 10px; 
+      text-align: left; 
+      font-size: 0.72rem; 
+      font-weight: 600; 
+      text-transform: uppercase; 
+      letter-spacing: 0.5px; 
+    }
+    .manifest-table td { 
+      padding: 6px 10px; 
+      border-bottom: 1px solid #e2e8f0; 
+      font-size: 0.8rem; 
+      color: #334155; 
+      vertical-align: middle; 
+    }
+    .manifest-table tr:nth-child(even) { 
+      background-color: #f8fafc; 
+    }
+    
+    /* Estructura Cédula | Nombre COLINEAL (Optimización Horizontal) */
+    .identity-container { 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+    }
+    .identity-badge { 
+      font-family: monospace; 
+      font-size: 0.72rem; 
+      color: #1e3a8a; 
+      font-weight: 700; 
+      background: #e0f2fe; 
+      padding: 1px 5px; 
+      border-radius: 3px; 
+      border: 1px solid #bae6fd;
+      white-space: nowrap;
+    }
+    .identity-name { 
+      font-weight: 600; 
+      color: #0f172a; 
+      white-space: nowrap;
+    }
+
+    /* Nota de Control Vial Concluyente */
+    .footer-note { 
+      margin-top: 25px; 
+      font-size: 0.68rem; 
+      text-align: justify; 
+      color: #64748b; 
+      border: 1px dashed #cbd5e1; 
+      background: #fafafa; 
+      padding: 10px 14px; 
+      border-radius: 4px; 
+      line-height: 1.4; 
+    }
+    
+    /* Botón Flotante */
+    .btn-print-floating { 
+      position: fixed; 
+      bottom: 35px; 
+      right: 35px; 
+      background: #10b981; 
+      color: white; 
+      border: none; 
+      padding: 14px 24px; 
+      border-radius: 50px; 
+      font-size: 0.95rem; 
+      font-weight: 600; 
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); 
+      cursor: pointer; 
+      display: flex; 
+      align-items: center; 
+      gap: 10px; 
+      transition: all 0.2s ease-in-out; 
+      z-index: 9999; 
+    }
+    .btn-print-floating:hover { 
+      background: #059669; 
+      transform: translateY(-2px); 
+      box-shadow: 0 6px 18px rgba(16, 185, 129, 0.4); 
+    }
+    
+    /* Loader de extracción */
+    #loader { 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: center; 
+      align-items: center; 
+      height: 85vh; 
+      font-weight: 600; 
+      color: #475569; 
+    }
+    .spinner { 
+      border: 3px solid rgba(0,0,0,0.08); 
+      width: 42px; 
+      height: 42px; 
+      border-radius: 50%; 
+      border-left-color: #1e3a8a; 
+      animation: spin 0.8s linear infinite; 
+      margin-bottom: 18px; 
+    }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Reglas CSS de Inyección Crítica para Impresión */
+    @media print {
+      body { 
+        padding: 0; 
+        margin: 0; 
+        color: #000; 
+        background: #fff; 
+      }
+      .btn-print-floating { 
+        display: none !important; 
+      }
+      .meta-card { 
+        background: #fff !important; 
+        border: 1px solid #cbd5e1 !important; 
+        border-left: 4px solid #000 !important; 
+        box-shadow: none !important; 
+      }
+      .manifest-table th { 
+        background: #0f172a !important; 
+        color: #fff !important; 
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact; 
+      }
+      .identity-badge { 
+        background: #f1f5f9 !important; 
+        border: 1px solid #94a3b8 !important; 
+        color: #000 !important;
+        -webkit-print-color-adjust: exact; 
+        print-color-adjust: exact; 
+      }
+    }
+
+    /* Asegura que el fondo del PDF sea blanco puro y no gris */
+    #contenidoManifiesto {
+        background: white !important;
+        padding: 5mm; /* Pequeño respiro interno */
+    }
+
+  </style>
+
+  <!-- Librería para conversión de HTML a PDF Real -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+</head>
+<body>
+
+  <div id="loader">
+    <div class="spinner"></div>
+    <p>Compilando datos del manifiesto desde la Red Operativa...</p>
+  </div>
+
+  <div id="contenidoManifiesto" style="display: none;">
+    
+    <div class="header-container">
+      <div class="logo-area">
+        <img id="mLogo" src="" alt="Logo Cadena de Favores Vzla">
+      </div>
+      <div class="header-text-area">
+        <div class="institution-title">CADENA DE FAVORES VENEZUELA</div>
+        <div class="document-type">Manifiesto Oficial de Comisión</div>
+      </div>
+    </div>
+    
+    <div class="meta-grid">
+      <div class="meta-card">
+        <div class="meta-card-title">Información del Rol de Guardia</div>
+        <div class="meta-card-value" style="margin-bottom: 4px;">ID Control: <span id="mIdGuardia" style="font-family: monospace; font-weight:700; color:#1e3a8a;"></span></div>
+        <div class="meta-card-value">Fecha de Turno: <span id="mFecha"></span></div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Logística y Destino</div>
+        <div class="meta-card-value" style="margin-bottom: 4px;">Destino Autorizado: <span id="mDestino"></span></div>
+        <div class="meta-card-value">Unidad / Chofer: <span id="mChofer"></span> <span id="mTelefono" style="font-size:0.8rem; margin-left:5px;"></span></div>
+      </div>
+    </div>
+
+    <div class="section-title">
+      <i class="fa-solid fa-users-viewfinder text-primary"></i> Personal y Especialistas Autorizados
+    </div>
+    
+    <table class="manifest-table">
+      <thead>
+        <tr>
+          <th style="width: 6%; text-align: center;">Nro</th>
+          <th style="width: 44%;">Cédula | Nombre y Apellido</th>
+          <th style="width: 18%;">Área</th>
+          <th style="width: 18%;">Especialidad</th>
+          <th style="width: 14%; text-align: center;">Teléfono</th>
+        </tr>
+      </thead>
+      <tbody id="tablaPasajerosBody">
+      </tbody>
+    </table>
+    
+    <div class="footer-note">
+      <strong>NOTA DE CONTROL VIAL:</strong> Este documento constituye un manifiesto formal de personal voluntario civil en funciones de apoyo humanitario y asistencia social coordinada bajo el marco de la Red Operativa de Cadena de Favores Venezuela. Se emite a efectos de dejar constancia de los especialistas y tripulantes legítimamente autorizados que viajan a bordo de la unidad de transporte indexada. Se agradece respetuosamente a las autoridades competentes, cuerpos de seguridad ciudadana y personal vial de guardia (alcabalas) prestar la colaboración necesaria para garantizar el libre, expedito y seguro tránsito de esta comisión hacia su destino establecido.
+    </div>
+    
+    <!-- Botón de Descarga Actualizado -->
+    <button id="btnDescargar" class="btn-print-floating" onclick="generarPDFDescargable()">
+      <i class="fa-solid fa-file-arrow-down"></i> Guardar Manifiesto (PDF)
+    </button>
+  </div>
+
+  <script>
+    window.onload = function() {
+      ejecutarCargaManifiesto();
+    };
+
+    function ejecutarCargaManifiesto() {
+      // Inyección del ID desde el backend por medio de la variable evaluada en doGet
+      const idGuardia = "<?= idGuardiaServidor ?>";
+      
+      if (!idGuardia || idGuardia === "") {
+        document.getElementById('loader').innerHTML = '<p style="color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Error: ID de guardia ausente o no detectado por el servidor.</p>';
+        return;
+      }
+
+      if (typeof google === "undefined" || !google.script || !google.script.run) {
+        setTimeout(ejecutarCargaManifiesto, 200);
+        return;
+      }
+
+      // CORRECCIÓN: La lectura de 'res' solo debe ocurrir DENTRO del withSuccessHandler
+      google.script.run
+        .withSuccessHandler(res => {
+          if (res && res.status === "SUCCESS") {
+            const m = res.manifiesto;
+            
+            // Renderizado del logo dinámico en Base64 procesado por el servidor
+            if (m.logoBase64) {
+              document.getElementById('mLogo').src = m.logoBase64;
+            } else {
+              document.getElementById('mLogo').style.display = 'none';
+            }
+            
+            document.getElementById('mIdGuardia').innerText = escapeHTML(m.idGuardia);
+            document.getElementById('mFecha').innerText = escapeHTML(m.fecha);
+            document.getElementById('mDestino').innerText = escapeHTML(m.destino);
+            document.getElementById('mChofer').innerText = escapeHTML(m.transporte?.nombre || "NO ASIGNADO");
+            
+            const telf = m.transporte?.telefono;
+            document.getElementById('mTelefono').innerText = (telf && telf !== "N/D") ? `(Telf: ${escapeHTML(telf)})` : "";
+            
+            const tbody = document.getElementById('tablaPasajerosBody');
+            tbody.innerHTML = "";
+            
+            if (m.pasajeros && m.pasajeros.length > 0) {
+              m.pasajeros.forEach((p, idx) => {
+                const cedulaStr = p.cedula && p.cedula !== "N/D" ? p.cedula : "S/C";
+                
+                // Formato colineal estricto para ahorro de espacio horizontal y vertical
+                const row = `<tr>
+                  <td style="text-align: center; font-weight: 600; color: #64748b;">${idx + 1}</td>
+                  <td>
+                    <div class="identity-container">
+                      <span class="identity-badge">${escapeHTML(cedulaStr)}</span>
+                      <span class="identity-name">${escapeHTML(p.nombre)}</span>
+                    </div>
+                  </td>
+                  <td style="font-weight: 500;">${escapeHTML(p.voluntariado || 'General')}</td>
+                  <td><span class="badge" style="background:#f1f5f9; color:#1e293b; padding:4px 8px; border-radius:4px; font-size:0.8rem;">${escapeHTML(p.especialidad || 'N/D')}</span></td>
+                  <td style="text-align: center; font-family: monospace; font-size:0.8rem; color:#475569;">${escapeHTML(p.telefono || 'N/D')}</td>
+                </tr>`;
+                tbody.innerHTML += row;
+              });
+            } else {
+              tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#64748b; padding:30px; font-weight:500;">No se encuentran especialistas registrados/apuntados para esta fecha.</td></tr>';
+            }
+            
+            document.getElementById('loader').style.display = 'none';
+            document.getElementById('contenidoManifiesto').style.display = 'block';
+          } else {
+            document.getElementById('loader').innerHTML = `<p style="color: #ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Error del Servidor: ${escapeHTML(res.message)}</p>`;
+          }
+        })
+        .withFailureHandler(err => {
+          console.error("Error en comunicación con Apps Script:", err);
+          document.getElementById('loader').innerHTML = `<p style="color: #ef4444;"><i class="fa-solid fa-wifi"></i> Fallo de comunicación de red: ${escapeHTML(err.toString())}</p>`;
+        })
+        .generarDataManifiestoGuardia(idGuardia);
+    }
+
+    function escapeHTML(str) {
+      return str ? str.toString().replace(/[&<>'"]/g, 
+        tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+      ) : '';
+    }
+
+    /**
+     * Convierte el contenedor en un PDF limpio y lo descarga al computador
+     */
+    function generarPDFDescargable() {
+      const element = document.getElementById('contenidoManifiesto');
+      const btn = document.getElementById('btnDescargar');
+      
+      // Capturamos datos para el nombre del archivo
+      const idG = document.getElementById('mIdGuardia').innerText || "CF";
+      const fecha = document.getElementById('mFecha').innerText.replace(/\//g, "-") || "00-00-00";
+      
+      // Ocultamos el botón temporalmente para que no salga en el PDF
+      btn.style.display = 'none';
+
+      // Configuración del generador de PDF
+      const opciones = {
+        margin:       [10, 10, 10, 10], // Margen en mm (Arriba, Izq, Abajo, Der)
+        filename:     `Manifiesto_${idG}_${fecha}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, // Importante para que el logo se vea
+            letterRendering: true 
+        },
+        jsPDF:        { unit: 'mm', format: 'letter', orientation: 'portrait' }
+      };
+
+      // Ejecutar la generación y descarga
+      html2pdf().set(opciones).from(element).save().then(() => {
+          // Volvemos a mostrar el botón tras la descarga
+          btn.style.display = 'flex';
+      });
+    }
+
+  </script>
+</body>
+</html>
