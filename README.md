@@ -1,7 +1,3 @@
-Este documento es el archivo **`README.md`** técnico oficial del proyecto. Está diseñado para que cualquier desarrollador de software o administrador de sistemas de Google Cloud/Workspace pueda integrarse como colaborador, entender la arquitectura y continuar el desarrollo de forma estructurada.
-
----
-
 # Red Operativa - Cadena de Favores Vzla
 ### Sistema de Gestión, Control Logístico y Registro Técnico de Personal Voluntario
 
