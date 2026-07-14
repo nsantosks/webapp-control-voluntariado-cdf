@@ -1,0 +1,183 @@
+<div class="row justify-content-center">
+  <div class="col-12 col-md-5">
+    <div class="card shadow-lg border-0 mt-5 animate__animated animate__fadeIn">
+      <div class="card-body p-4">
+        <h4 class="text-center mb-3 text-primary fw-bold">Voluntariado Cadena de Favores Vzla</h4>
+        
+        <div class="d-flex justify-content-center mb-4">
+          <div class="btn-group w-100 shadow-sm" role="group" style="border-radius: 8px; overflow: hidden;">
+            <input type="radio" class="btn-check" name="btnRol" id="rolEslabon" checked autocomplete="off" value="eslabon">
+            <label class="btn btn-outline-primary py-2 fw-bold" for="rolEslabon">
+              <i class="fa-solid fa-link me-2"></i>Eslabón
+            </label>
+
+            <input type="radio" class="btn-check" name="btnRol" id="rolCoordinador" autocomplete="off" value="coordinador">
+            <label class="btn btn-outline-primary py-2 fw-bold" for="rolCoordinador">
+              <i class="fa-solid fa-user-shield me-2"></i>Coordinador
+            </label>
+          </div>
+        </div>
+
+        <p class="text-muted text-center small mb-4">Ingrese su correo institucional o personal para iniciar sesión o registrar su perfil operativo.</p>
+        
+        <div id="authStep1">
+          <div class="mb-3">
+            <label class="form-label fw-bold small">Correo Electrónico</label>
+            <input type="email" class="form-control form-control-lg" id="loginEmail" placeholder="usuario@dominio.com" required>
+          </div>
+          <button class="btn btn-primary w-100 py-2" id="btnSendOTP" onclick="iniciarAuth()">
+            Solicitar Código de Acceso
+          </button>
+        </div>
+
+        <div id="authStep2" class="d-none">
+          <div class="alert alert-info small py-2 d-flex align-items-center">
+            <i class="fa-solid fa-envelope-circle-check fs-5 me-2"></i> 
+            <span>Código enviado a su bandeja de entrada. Valide su carpeta de recibidos o spam.</span>
+          </div>
+          
+          <!-- NUEVO: Contenedor para mostrar errores sin usar alert() -->
+          <div id="loginErrorMsg" class="alert alert-danger small py-2 d-none animate__animated"></div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold small text-center d-block">Ingrese el código de 6 dígitos</label>
+            <input type="text" class="form-control form-control-lg text-center letter-spacing-2 font-monospace fs-4" id="loginOTP" maxlength="6" placeholder="------">
+          </div>
+          <button class="btn btn-success w-100 py-2" id="btnConfirmOTP" onclick="validarYAcceder()">
+            Confirmar Identidad y Acceder
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /**
+   * Captura el valor del radio button seleccionado de manera atómica
+   */
+  function obtenerRolSeleccionado() {
+    const radio = document.querySelector('input[name="btnRol"]:checked');
+    return radio ? radio.value : "eslabon";
+  }
+
+  // Función auxiliar para mostrar errores de forma nativa en la UI
+  function mostrarErrorAuth(mensaje) {
+    const errorDiv = document.getElementById('loginErrorMsg');
+    if (errorDiv) {
+        errorDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation me-1"></i> ${mensaje}`;
+        errorDiv.classList.remove('d-none');
+        // Pequeño truco para forzar que la animación se repita si falla 2 veces seguidas
+        errorDiv.classList.remove('animate__headShake');
+        void errorDiv.offsetWidth; 
+        errorDiv.classList.add('animate__headShake');
+    } else {
+        alert(mensaje);
+    }
+  }
+
+  function iniciarAuth() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const btn = document.getElementById('btnSendOTP');
+    
+    // Ocultar errores previos
+    const errorDiv = document.getElementById('loginErrorMsg');
+    if (errorDiv) errorDiv.classList.add('d-none');
+
+    if (!email) { mostrarErrorAuth("El correo electrónico es obligatorio."); return; }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Enviando código...';
+    
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status !== "ERROR") {
+          // Deshabilitamos temporalmente el cambio de rol para evitar confusiones visuales
+          document.querySelectorAll('input[name="btnRol"]').forEach(input => input.disabled = true);
+          
+          document.getElementById('authStep1').classList.add('d-none');
+          document.getElementById('authStep2').classList.remove('d-none');
+          document.getElementById('loginOTP').focus();
+        } else {
+          mostrarErrorAuth(res ? res.message : "Error desconocido al procesar la autenticación.");
+          btn.disabled = false;
+          btn.innerText = "Solicitar Código de Acceso";
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerText = "Solicitar Código de Acceso";
+        mostrarErrorAuth("Fallo de comunicación: No se pudo contactar con el servidor. Valide su conexión a internet.");
+      })
+      .verificarUsuarioYEnviarCodigo(email);
+  }
+
+  function validarYAcceder() {
+    const email = document.getElementById('loginEmail').value.trim();
+    const otp = document.getElementById('loginOTP').value.trim();
+    const btn = document.getElementById('btnConfirmOTP');
+    const rol = obtenerRolSeleccionado(); 
+    
+    // Ocultar errores previos
+    const errorDiv = document.getElementById('loginErrorMsg');
+    if (errorDiv) errorDiv.classList.add('d-none');
+
+    if (!otp || otp.length < 6) {
+      mostrarErrorAuth("Por favor, ingrese el código de verificación completo de 6 dígitos.");
+      return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Validando credenciales...';
+    
+    google.script.run
+      .withSuccessHandler(res => {
+        if (res && res.status === "SUCCESS") {
+          // --- USUARIO ANTIGUO / REGISTRADO ---
+          const perfilSesion = res.perfil;
+          perfilSesion.rolActivo = rol; 
+          sessionStorage.setItem('userProfile', JSON.stringify(perfilSesion));
+          cargarVista('perfil'); 
+
+        } else if (res && res.status === "REQUIRES_REGISTRATION") {
+          // --- USUARIO NUEVO (Debe pasar por el formulario y las políticas) ---
+          
+          // Cargamos la vista de fondo (vacía temporalmente)
+          cargarVista('perfil'); 
+          
+          setTimeout(() => {
+              const modalElem = document.getElementById('modalGuardia');
+              
+              // Bloqueo total (Fricción obligatoria)
+              modalElem.setAttribute('data-bs-backdrop', 'static');
+              modalElem.setAttribute('data-bs-keyboard', 'false');
+              const closeBtn = modalElem.querySelector('.btn-close');
+              if(closeBtn) closeBtn.style.display = 'none';
+
+              const modal = bootstrap.Modal.getOrCreateInstance(modalElem);
+              
+              // Lanzamos el formulario
+              if (typeof cargarFormularioNuevoVoluntario === 'function') {
+                  cargarFormularioNuevoVoluntario(res.email, null);
+                  modal.show();
+              }
+          }, 800); 
+
+        } else {
+          // --- ERROR DE CÓDIGO (OTP INCORRECTO) ---
+          mostrarErrorAuth(res ? res.message : "Código de verificación incorrecto.");
+          btn.disabled = false;
+          btn.innerText = "Confirmar Identidad y Acceder";
+          document.querySelectorAll('input[name="btnRol"]').forEach(input => input.disabled = false);
+        }
+      })
+      .withFailureHandler(err => {
+        btn.disabled = false;
+        btn.innerText = "Confirmar Identidad y Acceder";
+        mostrarErrorAuth("Fallo de comunicación: Tiempo de espera agotado al verificar las credenciales.");
+        document.querySelectorAll('input[name="btnRol"]').forEach(input => input.disabled = false);
+      })
+      .validarCodigoEIniciarSesion(email, otp, rol);
+  }
+</script>
