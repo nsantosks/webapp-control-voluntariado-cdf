@@ -1,0 +1,61 @@
+<style>
+  /* Asegura el anclaje del badge absoluto sin romper la grilla */
+  .calendar-day.position-relative {
+    position: relative !important;
+  }
+  
+  /* Realce de contorno de grado de producción para el día seleccionado */
+  .border-success-custom {
+    border: 2px solid #198754 !important;
+    box-shadow: inset 0 0 0 1px rgba(25, 135, 84, 0.15), 0 2px 4px rgba(0,0,0,0.05);
+    background-color: #f8fff9 !important;
+  }
+
+  /* Animación sutil para destacar el estatus activo del voluntario */
+  .calendar-day .badge.bg-success {
+    font-size: 0.75rem;
+    padding: 0.35em 0.5em;
+    z-index: 10;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+</style>
+
+<div class="card shadow-sm border-0 mt-2 animate__animated animate__fadeIn">
+    <div class="card-body p-0">
+        <div class="d-flex justify-content-between align-items-center p-3 bg-white border-bottom">
+            <button class="btn btn-outline-secondary btn-sm" id="btnPrevMonth">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <h4 id="monthYearDisplay" class="m-0 fw-bold text-dark">Julio 2026</h4>
+            <button class="btn btn-outline-secondary btn-sm" id="btnNextMonth">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+    </div>
+</div>
+
+<script>
+  /**
+   * Inicializador autónomo del ciclo de vida del calendario.
+   * Acopla navegadores y ejecuta la sincronización asíncrona segura.
+   */
+  (function() {
+      document.getElementById('btnPrevMonth').onclick = function() {
+          currentDate.setMonth(currentDate.getMonth() - 1);
+          renderCalendar(currentDate);
+      };
+      
+      document.getElementById('btnNextMonth').onclick = function() {
+          currentDate.setMonth(currentDate.getMonth() + 1);
+          renderCalendar(currentDate);
+      };
+      
+      // CORRECCIÓN: Forzamos la ejecución de cargarDatos() siempre al montar el componente.
+      // Esto asegura que cualquier cambio transaccional hecho desde la consola de despacho
+      // se refleje inmediatamente en el tablero al cerrar el modal o cambiar de vista.
+      setTimeout(() => {
+          cargarDatos(); 
+      }, 50);
+  })();
+</script>
