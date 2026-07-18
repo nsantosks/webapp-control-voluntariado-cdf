@@ -151,3 +151,58 @@ clasp pull
 1.  **Sensibilidad a Mayúsculas/Minúsculas:** Al renderizar plantillas de HTML mediante `HtmlService.createTemplateFromFile('nombre')`, la cadena debe coincidir **exactamente** con el nombre del archivo. Por ejemplo, `manifiestoPDF` no es igual a `manifiestoPdf`.
 2.  **Serialización de Datos:** Recuerda que `google.script.run` no puede transmitir objetos nativos complejos como instancias de la clase `Date` de JavaScript a través del hilo RPC. Las fechas obtenidas de Google Sheets deben ser convertidas de forma explícita a cadenas (`String`) en el servidor (usando `Utilities.formatDate`) antes de ser retornadas al cliente para evitar bloqueos y fallos de retorno silenciosos.
 3.  **Prevención de Colisiones de Red:** Cualquier función que escriba en Google Sheets (`appendRow`, `setValues`) debe estar encapsulada dentro de un mecanismo de bloqueo de concurrencia (`LockService.getScriptLock().waitLock(...)`) para evitar la sobrescritura accidental de filas bajo alta demanda.
+
+
+
+---
+
+# Anexo al README: Registro de Actualizaciones y Mejoras del Sistema (Julio 2026)
+
+Este documento detalla las modificaciones de arquitectura, optimizaciones de código y mejoras de experiencia de usuario (UX) implementadas para consolidar la robustez y escalabilidad de la plataforma.
+
+---
+
+## 1. Resumen de Cambios Técnicos e Infraestructura
+
+### A. Normalización y Consistencia de la Base de Datos (Sheets)
+*   **Mapeo Relacional por ID:** Se modificó el guardado del "Punto de Recogida Preferido" y "Destino de la Misión" para almacenar identificadores únicos (`ID_Punto` como `D001`, `P001`, etc.) en lugar de cadenas de texto plano.
+*   **Traducción de Datos en el Servidor:** Se actualizaron las funciones `getDatosCalendario`, `obtenerPerfilUsuario`, `obtenerTodosLosVoluntarios` y `generarDataManifiestoGuardia` para realizar un cruce de datos (VLOOKUP del lado del servidor) con la hoja `Maestro_Puntos_Reunion`. Esto permite que el Excel almacene identificadores limpios mientras la interfaz muestra nombres amigables al usuario.
+*   **Ampliación de Columnas (Planilla de Personal):** Se expandió el mapeo de `Maestro_Especialistas` a **17 columnas** para dar soporte a:
+    *   `direccion` (Columna M - texto plano de habitación).
+    *   `banned` (Columna N - booleano de control de acceso).
+    *   `Documentacion_appsheet` e `Imagen_appsheet` (Columnas O y P - rutas relativas con el prefijo `Documentacion/` y el nombre físico del archivo).
+    *   `Fecha_Registro` (Columna Q - marca de tiempo del momento exacto del registro inicial).
+    *   `masive_advise` (Columna R - control de suscripción).
+    *   `last_advise` (Columna S - marca de tiempo de la última convocatoria).
+*   **Trazabilidad de Auditoría en Guardias:** Se amplió la estructura de `Registro_Principal` a **7 columnas** para registrar los datos del coordinador creador: `Nombre_Coordinador`, `Telefono_Coordinador` y `Correo_Coordinador` (obtenidos automáticamente en el servidor mediante su email de sesión).
+
+### B. Robustez del Código y Prevención de Fallas de Ejecución (Anti-Crash)
+*   **Tratamiento de Tipos Numéricos en Filtros:** Se corrigió un error crítico en la búsqueda local (`ejecutarFiltroAgendaLocal`) donde las cédulas o teléfonos almacenados en Sheets como números puros colapsaban la función al llamar a `.toLowerCase()`. Ahora, todos los campos de búsqueda se convierten explícitamente a cadenas de texto (`.toString()`) antes de ser procesados.
+*   **Aislamiento de Errores por Fila:** Se rediseñó `obtenerTodosLosVoluntarios` para que filtre de forma preventiva las filas vacías de la base de datos y controle de forma aislada las excepciones por celda corrupta. Si una fila falla, se registra un aviso en la consola de Google, pero el directorio general se sigue cargando con éxito para el coordinador.
+*   **Resolución de la Serialización de Fechas:** Las marcas de tiempo de Sheets (como `Fecha_Registro`) se leen en JavaScript como objetos `Date`. Dado que la API de Google Apps Script (`google.script.run`) falla al serializar objetos de fecha directos, se implementó una conversión a texto formateado en el servidor antes del envío al cliente.
+*   **Enrutador Seguro de Enlaces (/exec):** Se optimizó la función `obtenerUrlWebApp` para verificar si la dirección recuperada termina en `/dev` y reemplazarla de forma atómica por `/exec`. Esto asegura que los enlaces dinámicos enviados por correo para registro o desuscripción sean siempre de acceso público y eludan la pantalla de "Necesitas acceso" de Google.
+
+---
+
+## 2. Mejoras de Experiencia de Usuario (UI/UX) y Modularidad
+
+### A. Componente Autónomo: `FichaVoluntario.html`
+*   **Desacoplamiento:** Se extrajo la estructura del panel lateral (Offcanvas) y sus funciones de control de baneo y validación de `Perfil.html` para colocarlos en un nuevo archivo independiente.
+*   **Adaptador de Refresco en Vivo:** Se diseñó la función `refrescarFiltroDirectorioActivo` para detectar si el usuario se encuentra navegando en el Perfil o en la Consola de Voluntarios, ejecutando el filtro de recarga correspondiente de forma dinámica tras conmutar estatus de verificación o bloqueo.
+
+### B. Historial de Credenciales Guardadas en Drive
+*   **Tabla de Drive Scrollable:** Se reemplazó el enlace único de documentos en el perfil por una tabla Bootstrap compacta con un límite de altura fijado a 165px (con scroll de desplazamiento). Esta busca y lista en tiempo real todos los documentos físicos asociados al ID del voluntario en la carpeta de Drive.
+*   **Eliminación en Cascada e Integridad:** Los usuarios o coordinadores pueden previsualizar o eliminar documentos de forma selectiva. Si un voluntario elimina su última credencial, el servidor actualiza la base de datos reajustando su estatus de verificación automáticamente a "No Verificado".
+
+### C. Sistema de Convocatorias e Indicadores Dinámicos (Megáfono de Precisión)
+*   **Ahorro de Cuota de Envío:** Se eliminó la copia automática (CC) a los coordinadores en los envíos de convocatorias (masivas e individuales), reduciendo el consumo de la cuota diaria de la API de Gmail a la mitad.
+*   **Panel de Control Comparativo:** Se integró un panel superior de monitoreo que muestra, mediante semáforos de color dinámicos, la cuota diaria de correos restantes asignados por Google frente al número de voluntarios que realmente califican en el día (apto por verificación, no baneados, suscritos y sin envíos en las últimas 48 horas).
+*   **Megáfono de Precisión:** Se implementó un botón con el icono de un megáfono (`fa-bullhorn`) en el extremo derecho de las tarjetas de voluntarios. Si el voluntario califica, el botón aparece activo para un envío individual rápido. Si no, se desactiva visualmente de forma automática.
+*   **Siguiente Guardia Futura:** Al presionar el megáfono, un algoritmo de servidor busca de forma desatendida la guardia futura más cercana en el calendario y le envía el correo personalizado con los requerimientos específicos de ese día.
+
+### D. Erradicación de Alertas Nativas del Navegador (Dialogs)
+Se reemplazaron todos los cuadros de confirmación y alerta del navegador (`alert()` y `confirm()`) por flujos interactivos de Bootstrap integrados en el cuerpo de los modales activos:
+*   **Eliminación de Guardias:** El modal se transforma en una advertencia de seguridad crítica con botones de cancelar (que restauran la vista original) o confirmar (que muestran un spinner de borrado en cascada y un gran check verde de éxito).
+*   **Apertura de Guardias:** Al hacer clic en publicar, el modal pasa de forma fluida a una pantalla de éxito de confirmación automática.
+*   **Asignación de Transporte y Creación de Choferes:** Los botones de "Asignar" y "Guardar" se transforman en spinners de carga y luego en estados de éxito temporal ("¡Asignado!" / "¡Registrado!") con bordes rojos dinámicos en caso de campos vacíos.
+*   **Inscripción y Retiro de Voluntario:** Se configuró un sistema de alternancia inteligente de botones (Inscribirme / Darme de baja) que muestra advertencias de retiro y éxitos de postulación dinámicos con checks gigantes y auto-cierre de ventanas en 1.5 segundos.
